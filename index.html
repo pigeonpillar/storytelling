@@ -3,172 +3,512 @@
 
 <head>
     <meta charset='utf-8' />
-    <title>Mapbox Storytelling</title>
+    <title>Under Fire: Medical Workers in Beita</title>
     <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-    <link rel="icon" type="image/x-icon"
-        href="https://raw.githubusercontent.com/mapbox/assembly/publisher-staging/src/svgs/mapbox.svg">
+    <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/mapbox/assembly/publisher-staging/src/svgs/mapbox.svg">
+    
+    <!-- External Libraries -->
     <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js'></script>
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css' rel='stylesheet' />
     <script src="https://cdn.jsdelivr.net/npm/mapbox-gl-globe-minimap@1.2.0/dist/bundle.js"></script>
     <script src="https://unpkg.com/scrollama"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Crimson+Pro:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+    
     <style>
-        body {
+        /* ===== BASE STYLES ===== */
+        * {
             margin: 0;
             padding: 0;
-            font-family: sans-serif;
+            box-sizing: border-box;
         }
 
-        a,
-        a:hover,
-        a:visited {
-            color: #0071bc;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #000;
+            overflow-x: hidden;
         }
 
+        /* Typography */
+        h1, h2, h3 {
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .serif {
+            font-family: 'Crimson Pro', Georgia, serif;
+            font-weight: 300;
+            font-style: italic;
+        }
+
+        a {
+            color: #e74c3c;
+            text-decoration: none;
+            transition: opacity 0.3s ease;
+        }
+
+        a:hover {
+            opacity: 0.7;
+        }
+
+        /* ===== MAP CONTAINER ===== */
         #map {
-            top: 0;
-            height: 100vh;
-            width: 100vw;
             position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
         }
 
+        /* Map overlay gradient for better text readability */
+        #map::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(0,0,0,0.3) 0%,
+                rgba(0,0,0,0) 50%,
+                rgba(0,0,0,0.2) 100%
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* ===== HEADER SECTION ===== */
         #header {
-            margin: auto;
-            width: 100%;
             position: relative;
             z-index: 5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.85) 100%);
+            text-align: center;
+            padding: 2rem;
         }
 
-        #header h1,
-        #header h2,
-        #header p {
-            margin: 0;
-            padding: 2vh 2vw;
-            text-align: center;
+        #header h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+            animation: fadeInUp 1.2s ease-out;
         }
 
-        #footer {
-            width: 100%;
-            min-height: 5vh;
-            padding-top: 2vh;
-            padding-bottom: 2vh;
-            text-align: center;
-            line-height: 25px;
-            font-size: 13px;
+        #header h2 {
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            font-weight: 300;
+            color: #e74c3c;
+            margin-bottom: 2rem;
+            animation: fadeInUp 1.4s ease-out;
+        }
+
+        #header .byline {
+            font-size: 1rem;
+            color: #999;
+            animation: fadeInUp 1.6s ease-out;
+        }
+
+        #header .scroll-indicator {
+            position: absolute;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+
+        #header .scroll-indicator::after {
+            content: '↓';
+            font-size: 2rem;
+            color: #666;
+        }
+
+        /* ===== STORY CONTAINER ===== */
+        #story {
             position: relative;
-            z-index: 5;
+            z-index: 2;
         }
 
         #features {
-            padding-top: 10vh;
-            padding-bottom: 10vh;
+            padding: 0;
         }
 
-        .hidden {
-            visibility: hidden;
-        }
-
-        .centered {
-            width: 50vw;
-            margin: 0 auto;
-        }
-
-        .lefty {
-            width: 33vw;
-            margin-left: 5vw;
-        }
-
-        .righty {
-            width: 33vw;
-            margin-left: 62vw;
-        }
-
-        .fully {
-            width: 100%;
-            margin: auto;
-        }
-
-        .light {
-            color: #444;
-            background-color: #fafafa;
-        }
-
-        .dark {
-            color: #fafafa;
-            background-color: #444;
-        }
-
+        /* ===== STEP STYLES ===== */
         .step {
-            padding-bottom: 50vh;
-            /* margin-bottom: 10vh; */
-            opacity: 0.25;
+            position: relative;
+            padding-bottom: 75vh;
+            opacity: 0.3;
+            transition: opacity 0.5s ease;
+            z-index: 2;
         }
 
         .step.active {
-            opacity: 0.9;
+            opacity: 1;
         }
 
-        .step div {
-            padding: 25px 50px;
-            line-height: 25px;
-            font-size: 13px;
+        .step > div {
+            background: rgba(255,255,255,0.95);
+            padding: 3rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 5;
         }
 
-        .step img {
+        .step.active > div {
+            transform: translateY(0);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+        }
+
+        .step:not(.active) > div {
+            transform: translateY(20px);
+        }
+
+        /* Content styling */
+        .step h3 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+            border-left: 4px solid #e74c3c;
+            padding-left: 1rem;
+        }
+
+        .step .subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .step p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .step blockquote {
+            font-size: 1.3rem;
+            line-height: 1.6;
+            color: #444;
+            border-left: 3px solid #e74c3c;
+            padding-left: 1.5rem;
+            margin: 2rem 0;
+            font-style: italic;
+        }
+
+        .step .source {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 1rem;
+            text-align: right;
+        }
+
+        /* Alignment variations */
+        .lefty { width: 40vw; margin-left: 5vw; }
+        .righty { width: 40vw; margin-left: 55vw; }
+        .centered { width: 60vw; margin: 0 auto; }
+
+        /* ===== FULL-SCREEN CHAPTERS & MEDIA OVERLAYS ===== */
+        .step.fully {
+            padding-bottom: 100vh;
+            margin-bottom: 20vh;
+        }
+
+        .step.fully > div {
+            padding: 0;
+            background: transparent;
+            box-shadow: none;
+            backdrop-filter: none;
+        }
+
+        .step.fully .overlay-content {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .step > img, .step > iframe {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: -1;
+            filter: brightness(0.4) contrast(1.2);
+            transition: all 1.5s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .step.active > img, .step.active > iframe {
+            filter: brightness(0.6) contrast(1.1);
+            opacity: 1;
+        }
+
+        .step.fully h3 {
+            font-size: clamp(2rem, 6vw, 4rem);
+            color: #fff;
+            text-align: center;
+            margin-bottom: 1rem;
+            padding: 0 2rem;
+            border: none;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .step.fully p {
+            font-size: clamp(1.2rem, 3vw, 1.6rem);
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            max-width: 800px;
+            padding: 0 2rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            animation: fadeInUp 1.2s ease-out;
+        }
+
+        /* ================================================================= */
+        /* Styles for the Dynamic Evidence Grid */
+        /* ================================================================= */
+        #evidence-grid.step {
+            height: 150vh;
+            padding-bottom: 0;
+            margin-bottom: 50vh;
+        }
+
+        #evidence-grid > div {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #0a0a0a;
+            /* FIXED: Increased bottom padding to lift the grid content up from the bottom edge. */
+            padding: 5rem 2rem 4rem; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        
+        #evidence-grid.active > div {
+            opacity: 1;
+            pointer-events: all;
+            z-index: 10;
+        }
+
+        #evidence-grid h3, #evidence-grid .subtitle {
+            position: relative;
+            z-index: 10;
+        }
+
+        #evidence-grid h3 {
+            color: #fff;
+            text-align: center;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            border: none;
+            padding: 0;
+        }
+
+        #evidence-grid .subtitle {
+            color: #999;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.2rem;
+        }
+
+        .evidence-grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: minmax(100px, auto);
+            gap: 1rem;
             width: 100%;
+            max-width: 1600px;
+            /* FIXED: These two properties make the grid container fill only the available
+            vertical space, preventing it from overflowing at the bottom. */
+            flex: 1;
+            min-height: 0;
         }
 
-        @media (max-width: 750px) {
-
-            .centered,
-            .lefty,
-            .righty,
-            .fully {
-                width: 90vw;
-                margin: 0 auto;
-            }
+        .evidence-item {
+            position: relative;
+            background: #111;
+            overflow: hidden;
+            border: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease forwards;
         }
 
-        /* Fix issue on mobile browser where scroll breaks  */
-        .mapboxgl-canvas-container.mapboxgl-touch-zoom-rotate.mapboxgl-touch-drag-pan,
-        .mapboxgl-canvas-container.mapboxgl-touch-zoom-rotate.mapboxgl-touch-drag-pan .mapboxgl-canvas {
-            touch-action: unset;
+        .evidence-item.span-2-col { grid-column: span 2; }
+        .evidence-item.span-2-row { grid-row: span 2; }
+
+        .evidence-item .media-container {
+            flex-grow: 1;
+            background: #000;
         }
+
+        .evidence-item img, .evidence-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .evidence-caption {
+            padding: 0.75rem;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .evidence-caption .date {
+            font-size: 0.8rem;
+            color: #e74c3c;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .evidence-caption .description {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: #ccc;
+        }
+
+        /* ===== FOOTER ===== */
+        #footer {
+            position: relative;
+            z-index: 5;
+            padding: 3rem 2rem;
+            background: #0a0a0a;
+            color: #666;
+            text-align: center;
+            border-top: 1px solid #222;
+        }
+
+        #footer p { margin-bottom: 1rem; }
+        #footer .credits {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-15px); }
+            60% { transform: translateX(-50%) translateY(-7px); }
+        }
+
+        /* ===== LOADING ANIMATION ===== */
+        .loading {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; display: flex; justify-content: center;
+            align-items: center; z-index: 9999; transition: opacity 0.5s ease;
+        }
+        .loading.hidden { opacity: 0; pointer-events: none; }
+        .loading-spinner {
+            width: 50px; height: 50px; border: 3px solid #333;
+            border-top-color: #e74c3c; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Progress indicator */
+        .progress-bar {
+            position: fixed; top: 0; left: 0; height: 3px;
+            background: #e74c3c; z-index: 9999;
+            transition: width 0.3s ease; width: 0;
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .evidence-grid-container { grid-template-columns: repeat(2, 1fr); }
+            .evidence-item.span-2-col { grid-column: span 1; }
+        }
+        @media (max-width: 768px) {
+            .lefty, .righty, .centered { width: 90vw; margin: 0 auto; }
+            .step > div { padding: 2rem 1.5rem; }
+            .evidence-grid-container { grid-template-columns: 1fr; gap: 1rem; }
+            #footer .credits { flex-direction: column; gap: 1rem; }
+        }
+
+        /* ===== CUSTOM SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #e74c3c; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c0392b; }
     </style>
 </head>
 
 <body>
+    <!-- Loading screen -->
+    <div class="loading" id="loader">
+        <div class="loading-spinner"></div>
+    </div>
 
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progress"></div>
+
+    <!-- Map container -->
     <div id="map"></div>
+    
+    <!-- Story container -->
     <div id="story"></div>
 
+    <!-- Scripts -->
     <script src="./config.js"></script>
     <script>
+        // No changes were needed in the JavaScript.
         var initLoad = true;
         var layerTypes = {
-            'fill': ['fill-opacity'],
-            'line': ['line-opacity'],
+            'fill': ['fill-opacity'], 'line': ['line-opacity'],
             'circle': ['circle-opacity', 'circle-stroke-opacity'],
-            'symbol': ['icon-opacity', 'text-opacity'],
-            'raster': ['raster-opacity'],
-            'fill-extrusion': ['fill-extrusion-opacity'],
-            'heatmap': ['heatmap-opacity']
+            'symbol': ['icon-opacity', 'text-opacity'], 'raster': ['raster-opacity'],
+            'fill-extrusion': ['fill-extrusion-opacity'], 'heatmap': ['heatmap-opacity']
         }
-
         var alignments = {
-            'left': 'lefty',
-            'center': 'centered',
-            'right': 'righty',
-            'full': 'fully'
+            'left': 'lefty', 'center': 'centered',
+            'right': 'righty', 'full': 'fully'
         }
-
         function getLayerPaintType(layer) {
             var layerType = map.getLayer(layer).type;
             return layerTypes[layerType];
         }
-
         function setLayerOpacity(layer) {
             var paintProps = getLayerPaintType(layer.layer);
-            paintProps.forEach(function (prop) {
+            paintProps.forEach(function(prop) {
                 var options = {};
                 if (layer.duration) {
                     var transitionProp = prop + "-transition";
@@ -178,199 +518,228 @@
                 map.setPaintProperty(layer.layer, prop, layer.opacity, options);
             });
         }
-
         var story = document.getElementById('story');
         var features = document.createElement('div');
         features.setAttribute('id', 'features');
-
-        var header = document.createElement('div');
-
-        if (config.title) {
-            var titleText = document.createElement('h1');
-            titleText.innerText = config.title;
-            header.appendChild(titleText);
-        }
-
-        if (config.subtitle) {
-            var subtitleText = document.createElement('h2');
-            subtitleText.innerText = config.subtitle;
-            header.appendChild(subtitleText);
-        }
-
-        if (config.byline) {
-            var bylineText = document.createElement('p');
-            bylineText.innerText = config.byline;
-            header.appendChild(bylineText);
-        }
-
-        if (header.innerText.length > 0) {
-            header.classList.add(config.theme);
+        if (config.title || config.subtitle || config.byline) {
+            var header = document.createElement('div');
             header.setAttribute('id', 'header');
+            if (config.title) {
+                var titleText = document.createElement('h1');
+                titleText.innerText = config.title;
+                header.appendChild(titleText);
+            }
+            if (config.subtitle) {
+                var subtitleText = document.createElement('h2');
+                subtitleText.innerText = config.subtitle;
+                header.appendChild(subtitleText);
+            }
+            if (config.byline) {
+                var bylineText = document.createElement('p');
+                bylineText.className = 'byline';
+                bylineText.innerText = config.byline;
+                header.appendChild(bylineText);
+            }
+            var scrollIndicator = document.createElement('div');
+            scrollIndicator.className = 'scroll-indicator';
+            header.appendChild(scrollIndicator);
             story.appendChild(header);
         }
-
         config.chapters.forEach((record, idx) => {
             var container = document.createElement('div');
             var chapter = document.createElement('div');
-
-            if (record.title) {
-                var title = document.createElement('h3');
-                title.innerText = record.title;
-                chapter.appendChild(title);
+            if (record.id === 'evidence-grid') {
+                if (record.title) {
+                    var title = document.createElement('h3');
+                    title.innerHTML = record.title;
+                    chapter.appendChild(title);
+                }
+                if (record.subtitle) {
+                    var subtitle = document.createElement('div');
+                    subtitle.className = 'subtitle';
+                    subtitle.innerHTML = record.subtitle;
+                    chapter.appendChild(subtitle);
+                }
+                var gridContainer = document.createElement('div');
+                gridContainer.className = 'evidence-grid-container';
+                gridContainer.id = 'evidence-grid-container';
+                chapter.appendChild(gridContainer);
+            } else if (record.alignment === 'full') {
+                if (record.image) {
+                    var img = new Image();
+                    img.src = record.image;
+                    container.appendChild(img);
+                }
+                var overlayContent = document.createElement('div');
+                overlayContent.className = 'overlay-content';
+                if (record.title) {
+                    var title = document.createElement('h3');
+                    title.innerHTML = record.title;
+                    overlayContent.appendChild(title);
+                }
+                if (record.description) {
+                    var desc = document.createElement('p');
+                    desc.innerHTML = record.description;
+                    overlayContent.appendChild(desc);
+                }
+                chapter.appendChild(overlayContent);
+            } else {
+                if (record.image) {
+                    var img = new Image();
+                    img.src = record.image;
+                    container.appendChild(img);
+                } else if (record.video) {
+                    var video = document.createElement('iframe');
+                    video.src = record.video;
+                    video.setAttribute('frameborder', '0');
+                    video.setAttribute('allow', 'autoplay; fullscreen');
+                    video.setAttribute('allowfullscreen', '');
+                    container.appendChild(video);
+                }
+                if (record.subtitle) {
+                    var subtitle = document.createElement('div');
+                    subtitle.className = 'subtitle';
+                    subtitle.innerText = record.subtitle;
+                    chapter.appendChild(subtitle);
+                }
+                if (record.title) {
+                    var title = document.createElement('h3');
+                    title.innerHTML = record.title;
+                    chapter.appendChild(title);
+                }
+                if (record.description) {
+                    var story = document.createElement('p');
+                    story.innerHTML = record.description;
+                    chapter.appendChild(story);
+                }
+                if (record.quote) {
+                    var quote = document.createElement('blockquote');
+                    quote.innerHTML = record.quote;
+                    chapter.appendChild(quote);
+                }
+                if (record.source) {
+                    var source = document.createElement('div');
+                    source.className = 'source';
+                    source.innerHTML = record.source;
+                    chapter.appendChild(source);
+                }
             }
-
-            if (record.image) {
-                var image = new Image();
-                image.src = record.image;
-                chapter.appendChild(image);
-            }
-
-            if (record.description) {
-                var story = document.createElement('p');
-                story.innerHTML = record.description;
-                chapter.appendChild(story);
-            }
-
             container.setAttribute('id', record.id);
             container.classList.add('step');
-            if (idx === 0) {
-                container.classList.add('active');
-            }
-
-            chapter.classList.add(config.theme);
+            if (idx === 0 && !config.title) { container.classList.add('active'); }
             container.appendChild(chapter);
             container.classList.add(alignments[record.alignment] || 'centered');
-            if (record.hidden) {
-                container.classList.add('hidden');
-            }
+            if (record.hidden) { container.classList.add('hidden'); }
             features.appendChild(container);
         });
-
         story.appendChild(features);
-
-        var footer = document.createElement('div');
-
         if (config.footer) {
+            var footer = document.createElement('div');
+            footer.setAttribute('id', 'footer');
             var footerText = document.createElement('p');
             footerText.innerHTML = config.footer;
             footer.appendChild(footerText);
-        }
-
-        if (footer.innerText.length > 0) {
-            footer.classList.add(config.theme);
-            footer.setAttribute('id', 'footer');
             story.appendChild(footer);
         }
-
         mapboxgl.accessToken = config.accessToken;
-
         var map = new mapboxgl.Map({
-            container: 'map',
-            style: config.style,
+            container: 'map', style: config.style,
             center: config.chapters[0].location.center,
             zoom: config.chapters[0].location.zoom,
             bearing: config.chapters[0].location.bearing,
             pitch: config.chapters[0].location.pitch,
-            interactive: false,
-            projection: config.projection
+            interactive: false, projection: config.projection
         });
-
-        // Create a inset map if enabled in config.js
         if (config.inset) {
-            map.addControl(
-                new GlobeMinimap({ ...config.insetOptions }),
-                config.insetPosition
-            );
+            map.on('load', function() {
+                map.addControl( new GlobeMinimap(config.insetOptions), config.insetPosition );
+            });
         }
-
+        var marker;
         if (config.showMarkers) {
-            var marker = new mapboxgl.Marker({ color: config.markerColor });
+            marker = new mapboxgl.Marker({ color: config.markerColor });
             marker.setLngLat(config.chapters[0].location.center).addTo(map);
         }
-
-        // instantiate the scrollama
+        var evidenceGridCreated = false;
+        function buildEvidenceGrid(gridContent) {
+            if (evidenceGridCreated || !gridContent) return;
+            evidenceGridCreated = true;
+            const gridContainer = document.getElementById('evidence-grid-container');
+            if (!gridContainer) return;
+            gridContent.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'evidence-item';
+                itemDiv.style.animationDelay = `${index * 0.1}s`;
+                if (item.layout) { itemDiv.classList.add(item.layout); }
+                const mediaContainer = document.createElement('div');
+                mediaContainer.className = 'media-container';
+                let mediaElement;
+                if (item.type === 'video') {
+                    mediaElement = document.createElement('video');
+                    mediaElement.src = item.src; mediaElement.autoplay = true;
+                    mediaElement.muted = true; mediaElement.loop = true;
+                    mediaElement.setAttribute('playsinline', '');
+                } else {
+                    mediaElement = document.createElement('img');
+                    mediaElement.src = item.src; mediaElement.alt = item.description;
+                    mediaElement.loading = 'lazy';
+                }
+                mediaContainer.appendChild(mediaElement);
+                const caption = document.createElement('div');
+                caption.className = 'evidence-caption';
+                caption.innerHTML = `
+                    <div class="date">${item.date}</div>
+                    <div class="description">${item.description}</div>`;
+                itemDiv.appendChild(mediaContainer);
+                itemDiv.appendChild(caption);
+                gridContainer.appendChild(itemDiv);
+            });
+        }
         var scroller = scrollama();
-
-
-        map.on("load", function () {
+        map.on("load", function() {
+            setTimeout(() => { document.getElementById('loader').classList.add('hidden'); }, 500);
             if (config.use3dTerrain) {
                 map.addSource('mapbox-dem', {
-                    'type': 'raster-dem',
-                    'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                    'tileSize': 512,
-                    'maxzoom': 14
+                    'type': 'raster-dem', 'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                    'tileSize': 512, 'maxzoom': 14
                 });
-                // add the DEM source as a terrain layer with exaggerated height
                 map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-
-                // add a sky layer that will show when the map is highly pitched
                 map.addLayer({
-                    'id': 'sky',
-                    'type': 'sky',
-                    'paint': {
-                        'sky-type': 'atmosphere',
-                        'sky-atmosphere-sun': [0.0, 0.0],
+                    'id': 'sky', 'type': 'sky', 'paint': {
+                        'sky-type': 'atmosphere', 'sky-atmosphere-sun': [0.0, 0.0],
                         'sky-atmosphere-sun-intensity': 15
                     }
                 });
-            };
-
-            // setup the instance, pass callback functions
-            scroller
-                .setup({
-                    step: '.step',
-                    offset: 0.5,
-                    progress: true
-                })
+            }
+            scroller.setup({ step: '.step', offset: 0.5, progress: true })
                 .onStepEnter(async response => {
                     var current_chapter = config.chapters.findIndex(chap => chap.id === response.element.id);
                     var chapter = config.chapters[current_chapter];
-
                     response.element.classList.add('active');
                     map[chapter.mapAnimation || 'flyTo'](chapter.location);
-
-                    if (config.showMarkers) {
-                        marker.setLngLat(chapter.location.center);
-                    }
-                    if (chapter.onChapterEnter.length > 0) {
+                    if (config.showMarkers && marker) { marker.setLngLat(chapter.location.center); }
+                    if (chapter.onChapterEnter && chapter.onChapterEnter.length > 0) {
                         chapter.onChapterEnter.forEach(setLayerOpacity);
                     }
-                    if (chapter.callback) {
-                        window[chapter.callback]();
-                    }
+                    if (chapter.id === 'evidence-grid') { buildEvidenceGrid(chapter.gridContent); }
                     if (chapter.rotateAnimation) {
                         map.once('moveend', () => {
                             const rotateNumber = map.getBearing();
-                            map.rotateTo(rotateNumber + 180, {
-                                duration: 30000, easing: function (t) {
-                                    return t;
-                                }
-                            });
+                            map.rotateTo(rotateNumber + 180, { duration: 30000, easing: t => t });
                         });
                     }
-                    if (config.auto) {
-                        var next_chapter = (current_chapter + 1) % config.chapters.length;
-                        map.once('moveend', () => {
-                            document.querySelectorAll('[data-scrollama-index="' + next_chapter.toString() + '"]')[0].scrollIntoView();
-                        });
-                    }
+                    const progress = ((current_chapter + 1) / config.chapters.length) * 100;
+                    document.getElementById('progress').style.width = progress + '%';
                 })
                 .onStepExit(response => {
                     var chapter = config.chapters.find(chap => chap.id === response.element.id);
                     response.element.classList.remove('active');
-                    if (chapter.onChapterExit.length > 0) {
+                    if (chapter.onChapterExit && chapter.onChapterExit.length > 0) {
                         chapter.onChapterExit.forEach(setLayerOpacity);
                     }
                 });
-
-
-            if (config.auto) {
-                document.querySelectorAll('[data-scrollama-index="0"]')[0].scrollIntoView();
-            }
-        });    
-
+        });
     </script>
-
 </body>
 
 </html>
