@@ -64,24 +64,6 @@
             z-index: 0;
         }
 
-        /* Map overlay gradient for better text readability */
-        #map::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(
-                to bottom,
-                rgba(0,0,0,0.3) 0%,
-                rgba(0,0,0,0) 50%,
-                rgba(0,0,0,0.2) 100%
-            );
-            pointer-events: none;
-            z-index: 1;
-        }
-
         /* ===== HEADER SECTION ===== */
         #header {
             position: relative;
@@ -143,20 +125,20 @@
             padding: 0;
         }
 
-        /* ===== STEP STYLES ===== */
+        /* ===== STEP STYLES - FIXED Z-INDEX ===== */
         .step {
             position: relative;
             padding-bottom: 75vh;
             opacity: 0.3;
             transition: opacity 0.5s ease;
-            z-index: 2;
         }
 
         .step.active {
             opacity: 1;
         }
 
-        .step > div {
+        /* Regular content cards have higher z-index than evidence grid */
+        .step:not(.fully):not(#evidence-grid) > div {
             background: rgba(255,255,255,0.95);
             padding: 3rem;
             backdrop-filter: blur(10px);
@@ -164,15 +146,15 @@
             border: 1px solid rgba(255,255,255,0.1);
             transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            z-index: 5;
+            z-index: 100; /* Higher than evidence grid */
         }
 
-        .step.active > div {
+        .step.active:not(.fully):not(#evidence-grid) > div {
             transform: translateY(0);
             box-shadow: 0 30px 80px rgba(0,0,0,0.4);
         }
 
-        .step:not(.active) > div {
+        .step:not(.active):not(.fully):not(#evidence-grid) > div {
             transform: translateY(20px);
         }
 
@@ -222,7 +204,7 @@
         .righty { width: 40vw; margin-left: 55vw; }
         .centered { width: 60vw; margin: 0 auto; }
 
-        /* ===== FULL-SCREEN CHAPTERS & MEDIA OVERLAYS ===== */
+        /* ===== FULL-SCREEN CHAPTERS ===== */
         .step.fully {
             padding-bottom: 100vh;
             margin-bottom: 20vh;
@@ -247,6 +229,12 @@
             align-items: center;
             z-index: 3;
             pointer-events: none;
+            opacity: 0;
+            /* FIXED: The transition is removed from this rule. */
+        }
+        
+        .step.fully.active .overlay-content {
+            opacity: 1;
         }
 
         .step > img, .step > iframe {
@@ -256,7 +244,7 @@
             width: 100vw;
             height: 100vh;
             object-fit: cover;
-            z-index: -1;
+            z-index: 1;
             filter: brightness(0.4) contrast(1.2);
             transition: all 1.5s ease;
             opacity: 0;
@@ -289,13 +277,10 @@
             animation: fadeInUp 1.2s ease-out;
         }
 
-        /* ================================================================= */
-        /* Styles for the Dynamic Evidence Grid */
-        /* ================================================================= */
+        /* ===== EVIDENCE GRID WITH LOWER Z-INDEX ===== */
         #evidence-grid.step {
-            height: 150vh;
-            padding-bottom: 0;
-            margin-bottom: 50vh;
+            padding-bottom: 100vh;
+            margin-bottom: 20vh;
         }
 
         #evidence-grid > div {
@@ -305,25 +290,21 @@
             width: 100vw;
             height: 100vh;
             background: #0a0a0a;
-            /* FIXED: Increased bottom padding to lift the grid content up from the bottom edge. */
-            padding: 5rem 2rem 4rem; 
+            padding: 4rem 2rem;
             display: flex;
             flex-direction: column;
             align-items: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.8s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 10;
         }
         
         #evidence-grid.active > div {
             opacity: 1;
             pointer-events: all;
-            z-index: 10;
-        }
-
-        #evidence-grid h3, #evidence-grid .subtitle {
-            position: relative;
-            z-index: 10;
         }
 
         #evidence-grid h3 {
@@ -338,52 +319,127 @@
         #evidence-grid .subtitle {
             color: #999;
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 3rem;
             font-size: 1.2rem;
         }
 
         .evidence-grid-container {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-auto-rows: minmax(100px, auto);
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
             width: 100%;
-            max-width: 1600px;
-            /* FIXED: These two properties make the grid container fill only the available
-            vertical space, preventing it from overflowing at the bottom. */
-            flex: 1;
-            min-height: 0;
+            max-width: 1400px;
+            margin: 0 auto;
+            transform: translateZ(0);
+            will-change: transform;
         }
 
         .evidence-item {
             position: relative;
             background: #111;
-            overflow: hidden;
             border: 1px solid #222;
-            display: flex;
-            flex-direction: column;
+            overflow: hidden;
+            aspect-ratio: 16/9;
             opacity: 0;
-            animation: fadeInUp 0.8s ease forwards;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
 
-        .evidence-item.span-2-col { grid-column: span 2; }
-        .evidence-item.span-2-row { grid-row: span 2; }
-
-        .evidence-item .media-container {
-            flex-grow: 1;
-            background: #000;
+        .evidence-item.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        .evidence-item img, .evidence-item video {
+        .evidence-item.span-2-col { 
+            grid-column: span 2; 
+        }
+
+        .evidence-item:hover {
+            transform: scale(1.03);
+            border-color: #e74c3c;
+            z-index: 5;
+            box-shadow: 0 10px 30px rgba(231,76,60,0.4);
+        }
+
+        .media-container {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .evidence-item img,
+        .evidence-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .evidence-item:hover .video-overlay {
+            opacity: 0;
+        }
+
+        .play-icon {
+            width: 40px;
+            height: 40px;
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .play-icon::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-40%, -50%);
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 10px 0 10px 18px;
+            border-color: transparent transparent transparent rgba(255,255,255,0.9);
+            transition: border-color 0.3s ease;
+        }
+
+        .evidence-item:hover .play-icon {
+            transform: scale(1.1);
+        }
+
+        .evidence-item:hover .play-icon::after {
+            border-color: transparent transparent transparent rgba(231,76,60,0.9);
         }
 
         .evidence-caption {
-            padding: 0.75rem;
-            background: #1a1a1a;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.7) 50%, transparent);
             color: #fff;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .evidence-item:hover .evidence-caption {
+            transform: translateY(0);
         }
 
         .evidence-caption .date {
@@ -396,7 +452,7 @@
         .evidence-caption .description {
             font-size: 0.9rem;
             line-height: 1.4;
-            color: #ccc;
+            color: #ddd;
         }
 
         /* ===== FOOTER ===== */
@@ -453,14 +509,16 @@
         }
 
         /* ===== MOBILE RESPONSIVE ===== */
-        @media (max-width: 1024px) {
-            .evidence-grid-container { grid-template-columns: repeat(2, 1fr); }
-            .evidence-item.span-2-col { grid-column: span 1; }
-        }
         @media (max-width: 768px) {
             .lefty, .righty, .centered { width: 90vw; margin: 0 auto; }
             .step > div { padding: 2rem 1.5rem; }
-            .evidence-grid-container { grid-template-columns: 1fr; gap: 1rem; }
+            .evidence-grid-container { 
+                grid-template-columns: 1fr; 
+                gap: 1rem; 
+            }
+            .evidence-item.span-2-col { 
+                grid-column: span 1; 
+            }
             #footer .credits { flex-direction: column; gap: 1rem; }
         }
 
@@ -490,7 +548,7 @@
     <!-- Scripts -->
     <script src="./config.js"></script>
     <script>
-        // No changes were needed in the JavaScript.
+        // No changes are needed in the JavaScript.
         var initLoad = true;
         var layerTypes = {
             'fill': ['fill-opacity'], 'line': ['line-opacity'],
@@ -608,9 +666,9 @@
                     chapter.appendChild(title);
                 }
                 if (record.description) {
-                    var story = document.createElement('p');
-                    story.innerHTML = record.description;
-                    chapter.appendChild(story);
+                    var descElement = document.createElement('p');
+                    descElement.innerHTML = record.description;
+                    chapter.appendChild(descElement);
                 }
                 if (record.quote) {
                     var quote = document.createElement('blockquote');
@@ -669,75 +727,74 @@
             gridContent.forEach((item, index) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'evidence-item';
-                itemDiv.style.animationDelay = `${index * 0.1}s`;
                 if (item.layout) { itemDiv.classList.add(item.layout); }
                 const mediaContainer = document.createElement('div');
                 mediaContainer.className = 'media-container';
-                let mediaElement;
                 if (item.type === 'video') {
-                    mediaElement = document.createElement('video');
-                    mediaElement.src = item.src; mediaElement.autoplay = true;
-                    mediaElement.muted = true; mediaElement.loop = true;
-                    mediaElement.setAttribute('playsinline', '');
+                    const video = document.createElement('video');
+                    video.src = item.src; video.muted = true;
+                    video.loop = true; video.setAttribute('playsinline', '');
+                    video.preload = 'metadata';
+                    const overlay = document.createElement('div');
+                    overlay.className = 'video-overlay';
+                    const playIcon = document.createElement('div');
+                    playIcon.className = 'play-icon';
+                    overlay.appendChild(playIcon);
+                    itemDiv.addEventListener('mouseenter', function() { video.play().catch(e => { console.log('Video play failed:', e); }); });
+                    itemDiv.addEventListener('mouseleave', function() { video.pause(); video.currentTime = 0; });
+                    itemDiv.addEventListener('click', function() { if (video.paused) { video.play(); } else { video.pause(); } });
+                    mediaContainer.appendChild(video);
+                    mediaContainer.appendChild(overlay);
                 } else {
-                    mediaElement = document.createElement('img');
-                    mediaElement.src = item.src; mediaElement.alt = item.description;
-                    mediaElement.loading = 'lazy';
+                    const img = document.createElement('img');
+                    img.src = item.src; img.alt = item.description;
+                    img.loading = 'lazy';
+                    mediaContainer.appendChild(img);
                 }
-                mediaContainer.appendChild(mediaElement);
                 const caption = document.createElement('div');
                 caption.className = 'evidence-caption';
-                caption.innerHTML = `
-                    <div class="date">${item.date}</div>
-                    <div class="description">${item.description}</div>`;
+                caption.innerHTML = `<div class="date">${item.date}</div><div class="description">${item.description}</div>`;
                 itemDiv.appendChild(mediaContainer);
                 itemDiv.appendChild(caption);
                 gridContainer.appendChild(itemDiv);
+                requestAnimationFrame(() => { setTimeout(() => { itemDiv.classList.add('visible'); }, index * 100); });
             });
         }
         var scroller = scrollama();
         map.on("load", function() {
             setTimeout(() => { document.getElementById('loader').classList.add('hidden'); }, 500);
             if (config.use3dTerrain) {
-                map.addSource('mapbox-dem', {
-                    'type': 'raster-dem', 'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                    'tileSize': 512, 'maxzoom': 14
-                });
+                map.addSource('mapbox-dem', { 'type': 'raster-dem', 'url': 'mapbox://mapbox.mapbox-terrain-dem-v1', 'tileSize': 512, 'maxzoom': 14 });
                 map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-                map.addLayer({
-                    'id': 'sky', 'type': 'sky', 'paint': {
-                        'sky-type': 'atmosphere', 'sky-atmosphere-sun': [0.0, 0.0],
-                        'sky-atmosphere-sun-intensity': 15
-                    }
-                });
+                map.addLayer({ 'id': 'sky', 'type': 'sky', 'paint': { 'sky-type': 'atmosphere', 'sky-atmosphere-sun': [0.0, 0.0], 'sky-atmosphere-sun-intensity': 15 } });
             }
             scroller.setup({ step: '.step', offset: 0.5, progress: true })
-                .onStepEnter(async response => {
-                    var current_chapter = config.chapters.findIndex(chap => chap.id === response.element.id);
-                    var chapter = config.chapters[current_chapter];
-                    response.element.classList.add('active');
-                    map[chapter.mapAnimation || 'flyTo'](chapter.location);
-                    if (config.showMarkers && marker) { marker.setLngLat(chapter.location.center); }
-                    if (chapter.onChapterEnter && chapter.onChapterEnter.length > 0) {
-                        chapter.onChapterEnter.forEach(setLayerOpacity);
-                    }
-                    if (chapter.id === 'evidence-grid') { buildEvidenceGrid(chapter.gridContent); }
-                    if (chapter.rotateAnimation) {
-                        map.once('moveend', () => {
-                            const rotateNumber = map.getBearing();
-                            map.rotateTo(rotateNumber + 180, { duration: 30000, easing: t => t });
-                        });
-                    }
-                    const progress = ((current_chapter + 1) / config.chapters.length) * 100;
-                    document.getElementById('progress').style.width = progress + '%';
-                })
-                .onStepExit(response => {
-                    var chapter = config.chapters.find(chap => chap.id === response.element.id);
-                    response.element.classList.remove('active');
-                    if (chapter.onChapterExit && chapter.onChapterExit.length > 0) {
-                        chapter.onChapterExit.forEach(setLayerOpacity);
-                    }
-                });
+            .onStepEnter(async response => {
+                var current_chapter = config.chapters.findIndex(chap => chap.id === response.element.id);
+                var chapter = config.chapters[current_chapter];
+                response.element.classList.add('active');
+                map[chapter.mapAnimation || 'flyTo'](chapter.location);
+                if (config.showMarkers && marker) { marker.setLngLat(chapter.location.center); }
+                if (chapter.onChapterEnter && chapter.onChapterEnter.length > 0) { chapter.onChapterEnter.forEach(setLayerOpacity); }
+                if (chapter.id === 'evidence-grid') { buildEvidenceGrid(chapter.gridContent); }
+                if (chapter.rotateAnimation) {
+                    map.once('moveend', () => {
+                        const rotateNumber = map.getBearing();
+                        map.rotateTo(rotateNumber + 180, { duration: 30000, easing: t => t });
+                    });
+                }
+                const progress = ((current_chapter + 1) / config.chapters.length) * 100;
+                document.getElementById('progress').style.width = progress + '%';
+            })
+            .onStepExit(response => {
+                var chapter = config.chapters.find(chap => chap.id === response.element.id);
+                response.element.classList.remove('active');
+                if (chapter && chapter.id === 'evidence-grid') {
+                    const videos = document.querySelectorAll('#evidence-grid video');
+                    videos.forEach(v => { v.pause(); v.currentTime = 0; });
+                }
+                if (chapter && chapter.onChapterExit && chapter.onChapterExit.length > 0) { chapter.onChapterExit.forEach(setLayerOpacity); }
+            });
         });
     </script>
 </body>

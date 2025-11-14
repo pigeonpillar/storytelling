@@ -18,7 +18,7 @@ var config = {
     
     title: 'Under Fire',
     subtitle: 'Medical Workers in the West Bank Face Systematic Attacks',
-    byline: 'An Interactive Platfrom by Physicians for Human Rights - Israel',
+    byline: 'An Interactive Platform by Physicians for Human Rights - Israel',
     
     footer: `
         <div class="credits">
@@ -26,22 +26,21 @@ var config = {
                 <strong>Documentation:</strong> Physicians for Human Rights Israel
             </div>
             <div>
-                <strong>Spatial Analysis:</strong>
+                <strong>PHR 2025</strong>
             </div>
             <div>
-                <strong>Research:</strong> Ash, CRA Goldsmiths
+                <strong>Research:</strong> Ashraf Hamdan
             </div>
         </div>
         <p style="margin-top: 2rem; color: #666;">
             This investigation documents violations of international humanitarian law protecting medical personnel.
             <br>
-            <a href="" target="_blank"></a> | 
+            <a href="" target="_blank"></a>
             <a href="https://phr.org.il" target="_blank">phr.org.il</a>
         </p>
     `,
     
     chapters: [
-        // ... (previous chapters remain unchanged) ...
         {
             id: 'intro-beita',
             alignment: 'full',
@@ -80,10 +79,6 @@ var config = {
             location: { center: [35.2800, 32.1600], zoom: 14, pitch: 60, bearing: -45, speed: 0.5 },
             mapAnimation: 'flyTo'
         },
-
-        // =================================================================
-        // UPDATED: "Documented Evidence" Chapter
-        // =================================================================
         {
             id: 'evidence-grid',
             alignment: 'full',
@@ -98,51 +93,46 @@ var config = {
                 speed: 0.8
             },
             mapAnimation: 'flyTo',
-            // This array now drives the content of the dynamic grid.
             gridContent: [
                 {
                     type: 'video',
-                    src: './assets/IMG 8965.mp4', // Replace with your video path
+                    src: './assets/IMG 8965.mp4',
                     date: 'Oct 22, 2023',
                     description: 'Direct fire on clearly marked medical vehicle.',
-                    layout: 'span-2-col' // This item will be wider
+                    layout: 'span-2-col'
                 },
                 {
                     type: 'video',
-                    src: './assets/IMG 9100.mp4', // Replace with your image path
+                    src: './assets/IMG 9100.mp4',
                     date: 'Oct 15, 2023',
                     description: 'Ambulance blocked at Huwara checkpoint.'
                 },
                 {
                     type: 'image',
-                    src: './assets/03.jpg', // Replace with your image path
+                    src: './assets/03.jpg',
                     date: 'Nov 8, 2023',
                     description: 'Damage to ambulance windshield after attack.'
                 },
                 {
                     type: 'image',
-                    src: './assets/evidence-3.png', // Replace with your image path
+                    src: './assets/evidence-3.png',
                     date: 'Nov 3, 2023',
                     description: 'Medical workers detained during emergency response.'
                 },
                 {
                     type: 'video',
-                    src: './assets/IMG 9039.mp4', // Replace with your video path
+                    src: './assets/IMG 9039.mp4',
                     date: 'Nov 15, 2023',
                     description: 'Video testimony from driver Ahmad M.'
                 },
-                 {
+                {
                     type: 'image',
-                    src: './assets/CETW6636.JPG', // Replace with your image path
+                    src: './assets/CETW6636.JPG',
                     date: 'Nov 12, 2023',
                     description: 'Checkpoint obstruction of medical route.'
                 },
             ]
         },
-        // =================================================================
-        // End of update
-        // =================================================================
-
         {
             id: 'testimony-ahmad',
             alignment: 'right',
@@ -161,14 +151,13 @@ var config = {
             ],
             onChapterExit: [ { layer: 'incident-1-marker', opacity: 0, duration: 500 } ]
         },
-        // ... (subsequent chapters remain unchanged) ...
         {
             id: 'testimony-fatima',
             alignment: 'left',
             hidden: false,
             subtitle: 'Testimony #2',
             title: 'Fatima R., Paramedic',
-            video: './assets/IMG_8965.MOV',
+            video: './assets/IMG_9041.MOV',
             quote: `"We waited 47 minutes while we could see the patient's vitals dropping. By the time we reached the hospital, it was too late."`,
             description: `Fatima's account from October 22, 2023, describes how checkpoint delays directly resulted in preventable deaths.`,
             source: 'Video testimony recorded by B\'Tselem, October 28, 2023',
@@ -180,7 +169,6 @@ var config = {
             ],
             onChapterExit: [ { layer: 'incident-2-marker', opacity: 0, duration: 500 } ]
         },
-
         {
             id: 'pattern-analysis',
             alignment: 'center',
@@ -198,7 +186,6 @@ var config = {
             ],
             onChapterExit: [ { layer: 'heatmap-attacks', opacity: 0, duration: 1000 } ]
         },
-
         {
             id: 'legal-framework',
             alignment: 'center',
@@ -209,7 +196,6 @@ var config = {
             location: { center: [35.2769, 32.1544], zoom: 11, pitch: 0, bearing: 0, speed: 0.5 },
             mapAnimation: 'flyTo'
         },
-
         {
             id: 'testimony-khaled',
             alignment: 'right',
@@ -223,7 +209,6 @@ var config = {
             onChapterEnter: [ { layer: 'alternative-routes', opacity: 0.8, duration: 2000 } ],
             onChapterExit: [ { layer: 'alternative-routes', opacity: 0, duration: 1000 } ]
         },
-
         {
             id: 'international-response',
             alignment: 'center',
@@ -234,7 +219,6 @@ var config = {
             location: { center: [35.2769, 32.1544], zoom: 10, pitch: 0, bearing: 0, speed: 0.5 },
             mapAnimation: 'flyTo'
         },
-
         {
             id: 'conclusion',
             alignment: 'full',
