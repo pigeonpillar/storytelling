@@ -17,7 +17,7 @@ var config = {
     projection: 'mercator',
     
     title: 'Under Fire',
-    subtitle: 'Medical Workers in the West Bank Face Systematic Attacks',
+    subtitle: 'Paramedics in the West Bank Face Systematic Attacks',
     byline: 'An Interactive Platform by Physicians for Human Rights - Israel',
     
     footer: `
