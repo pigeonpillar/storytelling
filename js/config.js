@@ -23,17 +23,17 @@ var config = {
     footer: `
         <div class="credits">
             <div>
-                <strong>Documentation:</strong> Physicians for Human Rights Israel
+                <strong>Documentation:</strong> Physicians for Human Rights - Israel
             </div>
             <div>
                 <strong>PHR 2025</strong>
             </div>
             <div>
-                <strong>Research:</strong> Ashraf Hamdan
+                <strong>Research:</strong> Address: 
             </div>
         </div>
         <p style="margin-top: 2rem; color: #666;">
-            This investigation documents violations of international humanitarian law protecting medical personnel.
+            This interactive platform documents testimonies from the Beita, Aqraba and Usareen to the south of Nablus.
             <br>
             <a href="" target="_blank"></a>
             <a href="https://phr.org.il" target="_blank">phr.org.il</a>
