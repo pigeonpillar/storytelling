@@ -52,6 +52,7 @@ var config = {
             mapAnimation: 'flyTo',
             onChapterEnter: [ { layer: 'satellite', opacity: 0.3, duration: 2000 } ]
         },
+
         {
             id: 'context-overview',
             alignment: 'center',
@@ -69,6 +70,7 @@ var config = {
             ],
             onChapterExit: [ { layer: 'settlements-layer', opacity: 0, duration: 1000 } ]
         },
+        
         {
             id: 'medical-infrastructure',
             alignment: 'full',
