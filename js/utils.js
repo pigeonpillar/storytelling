@@ -26,14 +26,6 @@ const appConfig = {
 const utils = {
     isMobile: () => window.innerWidth <= appConfig.mobile.breakpoint,
     
-    // --- ADDED HERE ---
-    isHighEndDevice: function() {
-        const memoryGB = navigator.deviceMemory || 4;
-        const cores = navigator.hardwareConcurrency || 4;
-        return memoryGB >= 4 && cores >= 4;
-    },
-    // ------------------
-
     debounce: (func, wait) => {
         let timeout;
         return function executedFunction(...args) {

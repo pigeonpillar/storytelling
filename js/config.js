@@ -1,8 +1,5 @@
 var config = {
-     // --- ADD THESE LINES HERE ---
-    performanceMode: 'auto', // 'auto', 'high', 'low'
-    prefetchDistance: 2, // How many chapters ahead to preload
-    // ----------------------------
+    
     style: 'mapbox://styles/pigeonpillar/cmhxtqton001s01r0e22aaql9',
     accessToken: 'pk.eyJ1IjoicGlnZW9ucGlsbGFyIiwiYSI6ImNtaHhtbzVvNzAyMXQydnM5Zjl3ODc5Z3EifQ.pYMzqOG5H640PXTMlLxkMQ',
     showMarkers: true,
