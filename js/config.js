@@ -181,7 +181,8 @@ var config = {
 
              // --- NEW: SHOW LABELS ---
             labelField: 'name',    // <--- The exact attribute name in your GeoJSON
-            labelColor: '#000000', // (Optional) Text color
+            labelColor: '#de1111ff', // (Optional) Text color
+            opacity: 0.6, 
             labelSize: 12          // (Optional) Text size
             // ------------------------
         },
