@@ -75,71 +75,66 @@ const alignments = {
     'full': 'fully'
 };
 
-// ===== VIDEO MANAGEMENT =====
+// ===== VIDEO MANAGEMENT (Fixed Black Screen Issue) =====
 const videoManager = {
-    loadVideoWhenNeeded: (video, src) => {
-        if (!video.src && src) {
-            video.src = src;
-            video.load();
-            
-            // Enhanced error handling
-            video.addEventListener('error', function() {
-                console.warn('Video failed to load:', src);
-                const overlay = video.parentElement.querySelector('.video-overlay');
-                if (overlay) {
-                    overlay.style.display = 'none';
-                }
-                const errorDiv = document.createElement('div');
-                errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #666; font-size: 0.9rem; text-align: center;';
-                errorDiv.textContent = 'Video unavailable';
-                video.parentElement.appendChild(errorDiv);
-            });
-        }
-    },
-
     createVideoHandlers: (video, itemDiv) => {
         const handleVideoStart = () => {
-            const videoSrc = video.getAttribute('data-src');
-            videoManager.loadVideoWhenNeeded(video, videoSrc);
             setTimeout(() => {
-                video.play().catch(e => { console.log('Video play failed:', e); }); 
-            }, appConfig.performance.videoLoadDelay);
+                video.play().catch(e => { /* Ignore autoplay errors */ }); 
+                const overlay = itemDiv.querySelector('.video-overlay');
+                if (overlay) overlay.style.opacity = '0';
+            }, 50);
         };
 
         const handleVideoStop = () => {
             video.pause(); 
-            video.currentTime = 0; 
+            const overlay = itemDiv.querySelector('.video-overlay');
+            if (overlay) overlay.style.opacity = '1';
         };
 
         const handleVideoClick = () => {
-            const videoSrc = video.getAttribute('data-src');
-            videoManager.loadVideoWhenNeeded(video, videoSrc);
-            setTimeout(() => {
-                if (video.paused) { 
-                    video.play().catch(e => { console.log('Video play failed:', e); }); 
-                } else { 
-                    video.pause(); 
-                } 
-            }, 50);
+            if (video.paused) handleVideoStart();
+            else handleVideoStop();
         };
 
-        // Event listeners
         itemDiv.addEventListener('mouseenter', handleVideoStart);
         itemDiv.addEventListener('mouseleave', handleVideoStop);
-        itemDiv.addEventListener('touchstart', handleVideoStart);
-        itemDiv.addEventListener('touchend', handleVideoStop);
-        itemDiv.addEventListener('click', handleVideoClick);
+        itemDiv.addEventListener('touchstart', (e) => {
+            if(video.paused) handleVideoStart();
+            else handleVideoStop();
+        }, {passive: true});
+    },
+
+    // --- HARD RESET FUNCTION ---
+    resetVideos: () => {
+        const videos = document.querySelectorAll('#evidence-grid video');
+        videos.forEach(v => {
+            // 1. Get the source URL we saved in data-src
+            const src = v.getAttribute('data-src');
+            
+            if (src) {
+                // 2. Temporarily clear source to force browser reset
+                //    This is the key to fixing the black screen!
+                if(v.src !== src || v.readyState === 0) {
+                    v.src = src;
+                    v.load(); // Forces browser to download the thumbnail again
+                }
+            }
+
+            // 3. Ensure it starts at the beginning
+            v.currentTime = 0;
+            
+            // 4. Ensure the play button overlay is visible
+            const overlay = v.parentElement.querySelector('.video-overlay');
+            if (overlay) overlay.style.opacity = '1';
+        });
     },
 
     cleanupVideos: () => {
         const videos = document.querySelectorAll('#evidence-grid video');
         videos.forEach(v => { 
             v.pause(); 
-            v.currentTime = 0;
-            if (v.src && v.src !== '') {
-                v.removeAttribute('src');
-                v.load();
-            }
+            // We do NOT remove the src here, to try and keep the image visible
         });
     }
 };

@@ -135,6 +135,74 @@ var config = {
                 },
             ]
         },
+
+        {
+            id: 'west-bank-context',
+            alignment: 'left',
+            hidden: false,
+            subtitle: 'Regional Overview',
+            title: 'The West Bank: A Fragmented Territory',
+            description: `The occupied West Bank is divided by over 700 checkpoints, roadblocks, and barriers. This fragmentation severely restricts Palestinian movement, with dire consequences for emergency medical access across the territory.`,
+            source: 'Source: UN OCHA, Movement and Access Report 2024',
+            location: { 
+                center: [35.25, 31.95], 
+                zoom: 7.5, 
+                pitch: 0, 
+                bearing: 0, 
+                speed: 0.7 
+            },
+            mapAnimation: 'flyTo',
+            onChapterEnter: [
+                { layer: 'west-bank-layer', visibility: 'visible' }
+            ],
+            onChapterExit: [
+                { layer: 'west-bank-layer', visibility: 'none' }
+            ]
+        },
+
+       {
+    id: 'my-new-dual-layer',
+    alignment: 'left',
+    title: 'Two Regions View',
+    hidden: false,
+    subtitle: 'Regional Overview',
+    description: `The occupied West Bank is divided by over 700 checkpoints, roadblocks, and barriers. This fragmentation severely restricts Palestinian movement, with dire consequences for emergency medical access across the territory.`,
+    source: 'Source: UN OCHA, Movement and Access Report 2024',
+    
+    // --- ADVANCED CONFIGURATION ---
+    geojsonUrl: [
+        // File 1: Governorates (Polygons)
+        { 
+            url: './assets/governorates.geojson',
+            color: 'rgba(201, 41, 41, 0.53)',  // Blue fill
+            showFill: false,    // Yes, fill it
+            showLine: false,    // Yes, outline it
+            showPoint: true,   // No dots!
+
+             // --- NEW: SHOW LABELS ---
+            labelField: 'name',    // <--- The exact attribute name in your GeoJSON
+            labelColor: '#000000', // (Optional) Text color
+            labelSize: 12          // (Optional) Text size
+            // ------------------------
+        },
+        
+        // File 2: Lines/Roads (LineStrings)
+        { 
+            url: './assets/linesgov.geojson',
+            color: 'rgba(255, 0, 0, 0.83)',  // Red lines
+            opacity: 0.6,      // Controls transparency (0.0 to 1.0)
+            lineWidth: 3,      // Thicker lines look better (Default is 2)
+            showFill: false,   // CRITICAL: No fill = No artifacts
+            showLine: true,    // Yes, show line
+            showPoint: false   // CRITICAL: No points = No "series of dots"
+        }
+    ],
+    // ------------------------------
+
+    location: { center: [35.301675255000134, 32.179289897000103], zoom: 9, pitch: 0, bearing: 0, speed: 0.8 },
+    mapAnimation: 'flyTo'
+},
+
         {
             id: 'testimony-ahmad',
             alignment: 'right',
