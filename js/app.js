@@ -1,7 +1,81 @@
 // ===== GLOBAL VARIABLES =====
-let map; 
+let map;
+let currentChapterId = null;
+let pendingAnimation = null;
+let videoObserver = null;
+let imageObserver = null;
 
-// ===== DOM CREATION =====
+// ===== INTERSECTION OBSERVERS FOR PERFORMANCE =====
+function initializeObservers() {
+    // Video intersection observer for auto-play/pause
+    if ('IntersectionObserver' in window) {
+        videoObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const video = entry.target;
+                if (entry.isIntersecting) {
+                    video.play().catch(e => {
+                        console.log('Autoplay prevented:', e);
+                        const overlay = video.nextElementSibling;
+                        if (overlay && overlay.classList.contains('video-overlay')) {
+                            overlay.style.opacity = '1';
+                        }
+                    });
+                } else {
+                    video.pause();
+                    if (video.currentTime > 0) {
+                        video.currentTime = 0;
+                    }
+                }
+            });
+        }, { 
+            threshold: 0.5,
+            rootMargin: '50px'
+        });
+        
+        // Image lazy loading observer
+        imageObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    const src = img.getAttribute('data-src');
+                    if (src && !img.src) {
+                        img.src = src;
+                        img.removeAttribute('data-src');
+                        imageObserver.unobserve(img);
+                    }
+                }
+            });
+        }, {
+            rootMargin: '100px'
+        });
+    }
+}
+
+// ===== ASSET PRELOADING =====
+function preloadChapterAssets(chapterIndex) {
+    if (!config?.chapters) return;
+    
+    const chapter = config.chapters[chapterIndex];
+    if (!chapter) return;
+    
+    // Preload main chapter image
+    if (chapter.image) {
+        const img = new Image();
+        img.src = chapter.image;
+    }
+    
+    // Preload first few grid items
+    if (chapter.gridContent && Array.isArray(chapter.gridContent)) {
+        chapter.gridContent.slice(0, 3).forEach(item => {
+            if (item.type === 'image' && item.src) {
+                const img = new Image();
+                img.src = item.src;
+            }
+        });
+    }
+}
+
+// ===== DOM CREATION WITH LAZY LOADING =====
 function createStoryElements() {
     const story = document.getElementById('story');
     const features = document.createElement('div');
@@ -9,6 +83,7 @@ function createStoryElements() {
     
     if (typeof config === 'undefined') {
         console.error("❌ CRITICAL ERROR: config.js is not loaded!");
+        showError("Configuration file failed to load. Please refresh the page.");
         return;
     }
 
@@ -62,7 +137,14 @@ function createStoryElements() {
         } else if (record.alignment === 'full') {
             if (record.image) {
                 const img = new Image();
-                img.src = record.image;
+                img.loading = 'lazy';
+                // Use lazy loading with observer if available
+                if (imageObserver) {
+                    img.setAttribute('data-src', record.image);
+                    imageObserver.observe(img);
+                } else {
+                    img.src = record.image;
+                }
                 container.appendChild(img);
             }
             const overlayContent = document.createElement('div');
@@ -81,7 +163,14 @@ function createStoryElements() {
         } else {
             if (record.image) {
                 const img = new Image();
-                img.src = record.image;
+                img.loading = 'lazy';
+                // Use lazy loading with observer if available
+                if (imageObserver) {
+                    img.setAttribute('data-src', record.image);
+                    imageObserver.observe(img);
+                } else {
+                    img.src = record.image;
+                }
                 container.appendChild(img);
             } else if (record.video) {
                 const video = document.createElement('iframe');
@@ -89,6 +178,7 @@ function createStoryElements() {
                 video.setAttribute('frameborder', '0');
                 video.setAttribute('allow', 'autoplay; fullscreen');
                 video.setAttribute('allowfullscreen', '');
+                video.loading = 'lazy';
                 container.appendChild(video);
             }
             if (record.subtitle) {
@@ -127,6 +217,11 @@ function createStoryElements() {
         container.classList.add(alignments[record.alignment] || 'centered');
         if (record.hidden) { container.classList.add('hidden'); }
         features.appendChild(container);
+        
+        // Preload assets for next chapter
+        if (idx < config.chapters.length - 1) {
+            setTimeout(() => preloadChapterAssets(idx + 1), 1000);
+        }
     });
     
     story.appendChild(features);
@@ -141,8 +236,9 @@ function createStoryElements() {
     }
 }
 
-// ===== EVIDENCE GRID MANAGEMENT =====
+// ===== ENHANCED EVIDENCE GRID MANAGEMENT =====
 let evidenceGridCreated = false;
+let gridLoadingBatch = false;
 
 function buildEvidenceGrid(gridContent) {
     if (evidenceGridCreated || !gridContent) return;
@@ -151,7 +247,12 @@ function buildEvidenceGrid(gridContent) {
     const gridContainer = document.getElementById('evidence-grid-container');
     if (!gridContainer) return;
     
-    gridContent.forEach((item, index) => {
+    // Virtual scrolling implementation for large grids
+    const visibleCount = appConfig?.performance?.evidenceGridVisibleItems || 6;
+    const batchSize = 6;
+    let currentIndex = 0;
+    
+    function createGridItem(item, index) {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'evidence-item';
         if (item.layout) { itemDiv.classList.add(item.layout); }
@@ -162,18 +263,36 @@ function buildEvidenceGrid(gridContent) {
         if (item.type === 'video') {
             const video = document.createElement('video');
             video.muted = true;
-            video.loop = true; 
+            video.loop = true;
             video.setAttribute('playsinline', '');
-            
-            video.preload = 'metadata'; 
+            video.preload = 'metadata';
             video.setAttribute('data-src', item.src);
-            video.src = item.src; 
+            
+            // Lazy load video
+            if (index < visibleCount) {
+                video.src = item.src;
+            }
+            
+            // Add to observer if available
+            if (videoObserver && index >= visibleCount) {
+                videoObserver.observe(video);
+            }
             
             const overlay = document.createElement('div');
             overlay.className = 'video-overlay';
             const playIcon = document.createElement('div');
             playIcon.className = 'play-icon';
             overlay.appendChild(playIcon);
+            
+            // Manual play handler
+            overlay.addEventListener('click', () => {
+                if (!video.src && video.getAttribute('data-src')) {
+                    video.src = video.getAttribute('data-src');
+                }
+                video.play().then(() => {
+                    overlay.style.opacity = '0';
+                }).catch(e => console.error('Video play failed:', e));
+            });
             
             if (typeof videoManager !== 'undefined') {
                 videoManager.createVideoHandlers(video, itemDiv);
@@ -183,9 +302,16 @@ function buildEvidenceGrid(gridContent) {
             mediaContainer.appendChild(overlay);
         } else {
             const img = document.createElement('img');
-            img.src = item.src; 
             img.alt = item.description;
             img.loading = 'lazy';
+            
+            if (imageObserver && index >= visibleCount) {
+                img.setAttribute('data-src', item.src);
+                imageObserver.observe(img);
+            } else {
+                img.src = item.src;
+            }
+            
             mediaContainer.appendChild(img);
         }
         
@@ -196,40 +322,118 @@ function buildEvidenceGrid(gridContent) {
         itemDiv.appendChild(mediaContainer);
         itemDiv.appendChild(caption);
         gridContainer.appendChild(itemDiv);
-
-        if (index < appConfig.performance.evidenceGridVisibleItems) {
+        
+        // Stagger animations
+        const delay = index < visibleCount ? 0 : 
+            (index - visibleCount) * (appConfig?.performance?.evidenceGridItemDelay || 150);
+        
+        if (index < visibleCount) {
             requestAnimationFrame(() => { itemDiv.classList.add('visible'); });
         } else {
             setTimeout(() => { 
                 requestAnimationFrame(() => { itemDiv.classList.add('visible'); }); 
-            }, (index - appConfig.performance.evidenceGridVisibleItems) * appConfig.performance.evidenceGridItemDelay + 500);
+            }, delay + 500);
+        }
+        
+        return itemDiv;
+    }
+    
+    function loadBatch() {
+        if (gridLoadingBatch) return;
+        gridLoadingBatch = true;
+        
+        const endIndex = Math.min(currentIndex + batchSize, gridContent.length);
+        
+        for (let i = currentIndex; i < endIndex; i++) {
+            createGridItem(gridContent[i], i);
+        }
+        currentIndex = endIndex;
+        gridLoadingBatch = false;
+        
+        // Load more if needed
+        if (currentIndex < gridContent.length) {
+            if (window.requestIdleCallback) {
+                requestIdleCallback(() => loadBatch(), { timeout: 1000 });
+            } else {
+                setTimeout(() => loadBatch(), 100);
+            }
+        }
+    }
+    
+    // Start loading
+    loadBatch();
+}
+
+function cleanupEvidenceGrid() {
+    const videos = document.querySelectorAll('.evidence-grid-container video');
+    videos.forEach(video => {
+        video.pause();
+        video.currentTime = 0;
+        if (videoObserver) {
+            videoObserver.unobserve(video);
         }
     });
+}
+
+// ===== GEOJSON LOADER WITH RETRY =====
+async function loadGeoJSONWithRetry(url, maxRetries = 3) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return await response.json();
+        } catch (e) {
+            console.warn(`Attempt ${i + 1} failed for ${url}:`, e);
+            if (i === maxRetries - 1) {
+                console.error(`Failed to load GeoJSON after ${maxRetries} attempts: ${url}`);
+                return null;
+            }
+            // Exponential backoff
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+        }
+    }
 }
 
 // ===== MAP INITIALIZATION =====
 function initializeMap() {
     if (typeof mapboxgl === 'undefined') {
         console.error("❌ Mapbox GL JS is not loaded!");
-        alert("Mapbox Library failed to load. Check your internet connection.");
+        showError("Map library failed to load. Please check your internet connection.");
         return null;
     }
 
     mapboxgl.accessToken = config.accessToken;
     
+    // Mobile-specific settings
+    const isMobile = utils.isMobile();
+    
     try {
         map = new mapboxgl.Map({
-            container: 'map', 
+            container: 'map',
             style: config.style,
             center: config.chapters[0].location.center,
             zoom: config.chapters[0].location.zoom,
-            bearing: config.chapters[0].location.bearing,
-            pitch: config.chapters[0].location.pitch,
-            interactive: false, 
-            projection: config.projection
+            bearing: config.chapters[0].location.bearing || 0,
+            pitch: config.chapters[0].location.pitch || 0,
+            interactive: false,
+            projection: config.projection,
+            // Performance optimizations
+            antialias: !isMobile,
+            preserveDrawingBuffer: false,
+            refreshExpiredTiles: false,
+            maxTileCacheSize: isMobile ? 50 : 100,
+            trackResize: true
         });
         
-        if (config.inset) {
+        // Set zoom limits on mobile
+        if (isMobile) {
+            map.setMaxZoom(16);
+            map.setMinZoom(3);
+        }
+        
+        if (config.inset && !isMobile) {
             map.on('load', function() {
                 try {
                     map.addControl(new GlobeMinimap(config.insetOptions), config.insetPosition);
@@ -239,6 +443,7 @@ function initializeMap() {
         return map;
     } catch (e) {
         console.error("❌ Error creating map:", e);
+        showError("Failed to initialize map. Please refresh the page.");
         return null;
     }
 }
@@ -253,22 +458,23 @@ function initializeMarker(map) {
     return null;
 }
 
-// ===== DYNAMIC LAYER LOADER (UPDATED WITH OPACITY & LINE STYLING) =====
-function loadDynamicLayers(map) {
+// ===== ENHANCED DYNAMIC LAYER LOADER =====
+async function loadDynamicLayers(map) {
     console.log("🔄 Scanning config.js for GeoJSON files...");
     
-    config.chapters.forEach(chapter => {
+    for (const chapter of config.chapters) {
         if (chapter.geojsonUrl) {
             const rawInputs = Array.isArray(chapter.geojsonUrl) ? chapter.geojsonUrl : [chapter.geojsonUrl];
             
-            rawInputs.forEach((input, index) => {
+            for (let index = 0; index < rawInputs.length; index++) {
+                const input = rawInputs[index];
                 let url, specificColor, showFill, showLine, showPoint, labelField, specificOpacity, specificWidth;
 
                 if (typeof input === 'string') {
                     url = input;
                     specificColor = chapter.layerColor || '#e74c3c';
-                    specificOpacity = 1.0; // Default opacity
-                    specificWidth = 2;     // Default line width
+                    specificOpacity = 1.0;
+                    specificWidth = 2;
                     showFill = chapter.showFill !== false;
                     showLine = chapter.showLine !== false;
                     showPoint = chapter.showPoint !== false;
@@ -278,73 +484,101 @@ function loadDynamicLayers(map) {
                     specificColor = input.color || chapter.layerColor || '#e74c3c';
                     specificOpacity = input.hasOwnProperty('opacity') ? input.opacity : 1.0;
                     specificWidth = input.lineWidth || 2;
-                    
                     showFill = input.hasOwnProperty('showFill') ? input.showFill : (chapter.showFill !== false);
                     showLine = input.hasOwnProperty('showLine') ? input.showLine : (chapter.showLine !== false);
                     showPoint = input.hasOwnProperty('showPoint') ? input.showPoint : (chapter.showPoint !== false);
                     labelField = input.labelField || chapter.labelField;
                 }
 
-                const suffix = rawInputs.length > 1 ? `-${index}` : ''; 
+                const suffix = rawInputs.length > 1 ? `-${index}` : '';
                 const sourceId = `src-${chapter.id}${suffix}`;
                 const fillId = `layer-fill-${chapter.id}${suffix}`;
                 const lineId = `layer-line-${chapter.id}${suffix}`;
                 const pointId = `layer-circle-${chapter.id}${suffix}`;
                 const labelId = `layer-symbol-${chapter.id}${suffix}`;
 
+                // Load GeoJSON with retry
                 if (!map.getSource(sourceId)) {
-                    map.addSource(sourceId, { type: 'geojson', data: url });
+                    const geojsonData = await loadGeoJSONWithRetry(url);
+                    if (geojsonData) {
+                        try {
+                            map.addSource(sourceId, { 
+                                type: 'geojson', 
+                                data: geojsonData,
+                                generateId: true
+                            });
+                        } catch (e) {
+                            console.error(`Failed to add source ${sourceId}:`, e);
+                            continue;
+                        }
+                    } else {
+                        console.error(`Skipping layer for ${chapter.id} due to failed GeoJSON load`);
+                        continue;
+                    }
                 }
+
+                // Add layers with error handling
+                const addLayerSafely = (layerConfig) => {
+                    try {
+                        if (!map.getLayer(layerConfig.id)) {
+                            map.addLayer(layerConfig);
+                        }
+                    } catch (e) {
+                        console.error(`Failed to add layer ${layerConfig.id}:`, e);
+                    }
+                };
 
                 // FILL
-                if (!map.getLayer(fillId)) {
-                    map.addLayer({
-                        id: fillId, type: 'fill', source: sourceId,
-                        layout: { 'visibility': 'none' },
-                        paint: {
-                            'fill-color': specificColor, 
-                            'fill-opacity': specificOpacity,
-                            'fill-outline-color': '#000000'
-                        }
-                    });
-                }
+                addLayerSafely({
+                    id: fillId,
+                    type: 'fill',
+                    source: sourceId,
+                    layout: { 'visibility': 'none' },
+                    paint: {
+                        'fill-color': specificColor,
+                        'fill-opacity': specificOpacity,
+                        'fill-outline-color': '#000000'
+                    }
+                });
 
-                // LINE (Updated for better styling)
-                if (!map.getLayer(lineId)) {
-                    map.addLayer({
-                        id: lineId, type: 'line', source: sourceId,
-                        layout: { 
-                            'visibility': 'none',
-                            'line-join': 'round', // Makes corners smooth
-                            'line-cap': 'round'   // Makes ends round
-                        },
-                        paint: {
-                            'line-color': specificColor,
-                            'line-width': specificWidth,
-                            'line-opacity': specificOpacity
-                        }
-                    });
-                }
+                // LINE
+                addLayerSafely({
+                    id: lineId,
+                    type: 'line',
+                    source: sourceId,
+                    layout: {
+                        'visibility': 'none',
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': specificColor,
+                        'line-width': specificWidth,
+                        'line-opacity': specificOpacity
+                    }
+                });
 
                 // POINT
-                if (!map.getLayer(pointId)) {
-                    map.addLayer({
-                        id: pointId, type: 'circle', source: sourceId,
-                        layout: { 'visibility': 'none' },
-                        paint: {
-                            'circle-color': specificColor,
-                            'circle-radius': 6,
-                            'circle-stroke-width': 1,
-                            'circle-stroke-color': '#ffffff',
-                            'circle-opacity': specificOpacity
-                        }
-                    });
-                }
+                addLayerSafely({
+                    id: pointId,
+                    type: 'circle',
+                    source: sourceId,
+                    layout: { 'visibility': 'none' },
+                    paint: {
+                        'circle-color': specificColor,
+                        'circle-radius': 6,
+                        'circle-stroke-width': 1,
+                        'circle-stroke-color': '#ffffff',
+                        'circle-opacity': specificOpacity
+                    }
+                });
 
                 // LABEL
-                if (labelField && !map.getLayer(labelId)) {
-                    map.addLayer({
-                        id: labelId, type: 'symbol', source: sourceId,
+                if (labelField) {
+                    addLayerSafely({
+                        id: labelId,
+                        type: 'symbol',
+                        source: sourceId,
                         layout: {
                             'visibility': 'none',
                             'text-field': ['get', labelField],
@@ -362,7 +596,7 @@ function loadDynamicLayers(map) {
                     });
                 }
 
-                // Setup Triggers using specific opacity
+                // Setup Triggers
                 if (!chapter.onChapterEnter) chapter.onChapterEnter = [];
                 if (!chapter.onChapterExit) chapter.onChapterExit = [];
                 
@@ -373,56 +607,177 @@ function loadDynamicLayers(map) {
                     }
                 };
 
-                // Fill opacity usually looks better slightly lower than line/point opacity
                 addTrigger(fillId, showFill, specificOpacity > 0.6 ? 0.6 : specificOpacity);
                 addTrigger(lineId, showLine, specificOpacity);
                 addTrigger(pointId, showPoint, specificOpacity);
                 if (labelField) addTrigger(labelId, true, 1);
-            });
+            }
         }
-    });
-    console.log("✅ Smart Dynamic layers configured.");
+    }
 }
 
-// ===== SCROLL HANDLING =====
+// ===== ENHANCED SCROLL HANDLING =====
 function initializeScrollama(map, marker) {
     if (!map) return;
-    const scroller = scrollama();
     
-    map.on("load", function() {
+    const scroller = scrollama();
+    const isMobile = utils.isMobile();
+    
+    // Debounced scroll handlers
+    const debouncedStepEnter = utils.debounce(handleStepEnter, 100);
+    const debouncedStepExit = utils.debounce(handleStepExit, 100);
+    
+    function handleStepEnter(response) {
+        // Cancel any pending animations
+        if (pendingAnimation) {
+            map.stop();
+            pendingAnimation = null;
+        }
+        
+        const current_chapter = config.chapters.findIndex(chap => chap.id === response.element.id);
+        const chapter = config.chapters[current_chapter];
+        
+        if (!chapter) return;
+        
+        currentChapterId = response.element.id;
+        response.element.classList.add('active');
+        
+        // Preload next chapter assets
+        if (current_chapter < config.chapters.length - 1) {
+            preloadChapterAssets(current_chapter + 1);
+        }
+        
+        const currentCenter = map.getCenter();
+        const newCenter = chapter.location.center;
+        
+        const isMoving = utils.hasLocationChanged(currentCenter, newCenter) || 
+                       Math.abs(map.getZoom() - chapter.location.zoom) > 0.1;
+        
+        const triggerLayers = () => {
+            // Double-check we're still on the same chapter
+            if (currentChapterId !== response.element.id) return;
+            
+            if (chapter.onChapterEnter && chapter.onChapterEnter.length > 0) {
+                chapter.onChapterEnter.forEach(setLayerOpacity);
+            }
+            if (chapter.id === 'evidence-grid') {
+                buildEvidenceGrid(chapter.gridContent);
+                if (typeof videoManager !== 'undefined') {
+                    videoManager.resetVideos();
+                }
+            }
+        };
+
+        if (isMoving) {
+            // Adjust animation duration based on device
+            const duration = isMobile ? 1000 : 2000;
+            const animationOptions = {
+                ...chapter.location,
+                duration: duration,
+                essential: true
+            };
+            
+            pendingAnimation = response.element.id;
+            
+            map[chapter.mapAnimation || 'flyTo'](animationOptions);
+            
+            map.once('moveend', () => {
+                // Check if we're still on the same chapter after animation
+                const activeStep = document.querySelector('.step.active');
+                if (activeStep && activeStep.id === response.element.id) {
+                    triggerLayers();
+                }
+                if (pendingAnimation === response.element.id) {
+                    pendingAnimation = null;
+                }
+            });
+        } else {
+            triggerLayers();
+        }
+        
+        if (marker) {
+            marker.setLngLat(chapter.location.center);
+        }
+        
+        if (chapter.rotateAnimation) {
+            map.once('moveend', () => {
+                if (currentChapterId === response.element.id) {
+                    const rotateNumber = map.getBearing();
+                    map.rotateTo(rotateNumber + 180, { 
+                        duration: 30000, 
+                        easing: t => t 
+                    });
+                }
+            });
+        }
+        
+        // Update progress bar
+        const progress = ((current_chapter + 1) / config.chapters.length) * 100;
+        const progressBar = document.getElementById('progress');
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+        }
+    }
+    
+    function handleStepExit(response) {
+        const chapter = config.chapters.find(chap => chap.id === response.element.id);
+        response.element.classList.remove('active');
+        
+        if (chapter) {
+            if (chapter.id === 'evidence-grid') {
+                cleanupEvidenceGrid();
+                if (typeof videoManager !== 'undefined') {
+                    videoManager.cleanupVideos();
+                }
+            }
+            if (chapter.onChapterExit && chapter.onChapterExit.length > 0) {
+                chapter.onChapterExit.forEach(setLayerOpacity);
+            }
+        }
+    }
+    
+    map.on("load", async function() {
         console.log("🗺️ Map loaded successfully!");
         const loader = document.getElementById('loader');
         if(loader) loader.classList.add('hidden');
         
-        // EXISTING: HARDCODED WEST BANK
-        map.addSource('west-bank-source', {
-            type: 'geojson',
-            data: './assets/WB.geojson' 
-        });
-        
-        map.addLayer({
-            id: 'west-bank-layer',
-            type: 'fill',
-            source: 'west-bank-source',
-            layout: { 'visibility': 'none' },
-            paint: {
-                'fill-color': '#e74c3c',
-                'fill-opacity': 0.6,
-                'fill-outline-color': '#000000'
+        // Load hardcoded West Bank layer with retry
+        try {
+            const wbData = await loadGeoJSONWithRetry('./assets/WB.geojson');
+            if (wbData) {
+                map.addSource('west-bank-source', {
+                    type: 'geojson',
+                    data: wbData
+                });
+                
+                map.addLayer({
+                    id: 'west-bank-layer',
+                    type: 'fill',
+                    source: 'west-bank-source',
+                    layout: { 'visibility': 'none' },
+                    paint: {
+                        'fill-color': '#e74c3c',
+                        'fill-opacity': 0.6,
+                        'fill-outline-color': '#000000'
+                    }
+                });
+                
+                map.on('sourcedata', function(e) {
+                    if (e.sourceId === 'west-bank-source' && e.isSourceLoaded) {
+                        const f = map.querySourceFeatures('west-bank-source');
+                        if(f && f.length > 0) console.log(`✅ WB GeoJSON loaded: ${f.length} features.`);
+                    }
+                });
             }
-        });
+        } catch (e) {
+            console.error("Failed to load West Bank layer:", e);
+        }
 
-        // DYNAMIC LOADER
-        loadDynamicLayers(map);
+        // Load dynamic layers
+        await loadDynamicLayers(map);
         
-        map.on('sourcedata', function(e) {
-            if (e.sourceId === 'west-bank-source' && e.isSourceLoaded) {
-                const f = map.querySourceFeatures('west-bank-layer');
-                if(f.length > 0) console.log(`✅ WB GeoJSON loaded: ${f.length} features.`);
-            }
-        });
-        
-        if (config.use3dTerrain) {
+        // Add 3D terrain only on desktop and if enabled
+        if (config.use3dTerrain && !isMobile) {
             try {
                 map.addSource('mapbox-dem', { 
                     'type': 'raster-dem', 
@@ -431,70 +786,38 @@ function initializeScrollama(map, marker) {
                     'maxzoom': 14 
                 });
                 map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-            } catch(e) { console.warn("Terrain failed", e); }
+            } catch(e) { 
+                console.warn("Terrain failed to load", e); 
+            }
         }
         
+        // Setup scrollama
         scroller.setup({ 
             step: '.step', 
-            offset: utils.isMobile() ? appConfig.mobile.scrollOffset : appConfig.mobile.desktopScrollOffset,
+            offset: utils.isMobile() ? 
+                (appConfig?.mobile?.scrollOffset || 0.7) : 
+                (appConfig?.mobile?.desktopScrollOffset || 0.5),
             progress: true, 
             debug: false 
         })
-        .onStepEnter(utils.throttle(async (response) => {
-            const current_chapter = config.chapters.findIndex(chap => chap.id === response.element.id);
-            const chapter = config.chapters[current_chapter];
-            
-            response.element.classList.add('active');
-            
-            const currentCenter = map.getCenter();
-            const newCenter = chapter.location.center;
-            
-            if (utils.hasLocationChanged(currentCenter, newCenter) || map.getZoom() !== chapter.location.zoom) {
-                map[chapter.mapAnimation || 'flyTo'](chapter.location);
-            }
-            
-            if (marker) { marker.setLngLat(chapter.location.center); }
-            
-            if (chapter.onChapterEnter && chapter.onChapterEnter.length > 0) { 
-                chapter.onChapterEnter.forEach(setLayerOpacity); 
-            }
-            
-            if (chapter.id === 'evidence-grid') { 
-                buildEvidenceGrid(chapter.gridContent); 
-                if (typeof videoManager !== 'undefined') {
-                    videoManager.resetVideos(); 
-                }
-            }
-            
-            if (chapter.rotateAnimation) {
-                map.once('moveend', () => {
-                    const rotateNumber = map.getBearing();
-                    map.rotateTo(rotateNumber + 180, { duration: 30000, easing: t => t });
-                });
-            }
-            
-            const progress = ((current_chapter + 1) / config.chapters.length) * 100;
-            document.getElementById('progress').style.width = progress + '%';
-        }, appConfig.performance.scrollThrottle))
+        .onStepEnter(debouncedStepEnter)
+        .onStepExit(debouncedStepExit);
         
-        .onStepExit(response => {
-            const chapter = config.chapters.find(chap => chap.id === response.element.id);
-            response.element.classList.remove('active');
-            
-            if (chapter && chapter.id === 'evidence-grid') {
-                if (typeof videoManager !== 'undefined') {
-                    videoManager.cleanupVideos();
-                }
-            }
-            if (chapter && chapter.onChapterExit && chapter.onChapterExit.length > 0) { 
-                chapter.onChapterExit.forEach(setLayerOpacity); 
-            }
-        });
+        // Handle resize events
+        window.addEventListener('resize', utils.debounce(() => {
+            scroller.resize();
+        }, 250));
     });
 
     map.on('error', function(e) {
         console.error("Mapbox Error:", e);
-        document.getElementById('loader').classList.add('hidden');
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.add('hidden');
+        
+        // Show user-friendly error message for common issues
+        if (e.error && e.error.status === 401) {
+            showError("Map authentication failed. Please check your access token.");
+        }
     });
 }
 
@@ -503,7 +826,7 @@ function getLayerPaintType(layer) {
     try {
         if (map && map.getLayer && map.getLayer(layer)) {
             const layerType = map.getLayer(layer).type;
-            return layerTypes[layerType];
+            return layerTypes[layerType] || [];
         }
         return [];
     } catch (e) {
@@ -538,28 +861,80 @@ function setLayerOpacity(layer) {
     }
 }
 
-// ===== APPLICATION INITIALIZATION =====
-function initializeApp() {
-    console.log("🚀 Initializing App...");
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ff4444;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 5px;
+        z-index: 10000;
+        font-family: sans-serif;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    `;
+    errorDiv.textContent = message;
+    document.body.appendChild(errorDiv);
     
     setTimeout(() => {
+        errorDiv.style.opacity = '0';
+        errorDiv.style.transition = 'opacity 0.5s';
+        setTimeout(() => errorDiv.remove(), 500);
+    }, 5000);
+}
+
+// ===== APPLICATION INITIALIZATION =====
+function initializeApp() {
+    console.log("🚀 Initializing Enhanced Scrollytelling App...");
+    
+    // Initialize observers if supported
+    initializeObservers();
+    
+    // Force hide loader after timeout
+    const loaderTimeout = setTimeout(() => {
         const loader = document.getElementById('loader');
         if (loader && !loader.classList.contains('hidden')) {
-            console.warn("⚠️ Loader forced hidden by timeout (Map didn't load in time)");
+            console.warn("⚠️ Loader forced hidden by timeout");
             loader.classList.add('hidden');
         }
-    }, 3000);
+    }, 5000);
 
     try {
-        createStoryElements();
-        initializeMap(); 
+        // Check for required dependencies
+        if (typeof config === 'undefined') {
+            throw new Error("Configuration not loaded");
+        }
         
-        if(map) {
-            const marker = initializeMarker(map);
-            initializeScrollama(map, marker);
+        if (typeof mapboxgl === 'undefined') {
+            throw new Error("Mapbox GL not loaded");
+        }
+        
+        // Create story elements
+        createStoryElements();
+        
+        // Initialize map
+        const mapInstance = initializeMap();
+        
+        if(mapInstance) {
+            const marker = initializeMarker(mapInstance);
+            initializeScrollama(mapInstance, marker);
+            
+            // Clear timeout if map loads successfully
+            mapInstance.on('load', () => {
+                clearTimeout(loaderTimeout);
+            });
+        } else {
+            throw new Error("Map initialization failed");
         }
     } catch (e) {
         console.error("🔥 CRITICAL INIT ERROR:", e);
-        document.getElementById('loader').classList.add('hidden');
+        clearTimeout(loaderTimeout);
+        const loader = document.getElementById('loader');
+        if (loader) loader.classList.add('hidden');
+        showError(`Initialization failed: ${e.message}. Please refresh the page.`);
     }
 }
