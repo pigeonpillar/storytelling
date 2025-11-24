@@ -46,42 +46,208 @@ var config = {
             id: 'intro-beita',
             alignment: 'full',
             hidden: false,
-            title: 'Attacks on Ambulances in Beita',
+            title: 'Inside the Field of Fire',
             image: './assets/01.png',
-            description: 'Since October 2023, medical workers in South Nablus have faced systematic attacks while attempting to provide emergency care.',
+            description: 'In the villages of South Nablus, including Beita, Aqraba, Al-Sawyeh, Majdal Bani Fadil and Osarin, ambulance crews move through checkpoints, roadblocks, tear gas and live fire to reach the patients.',
             location: { center: [35.2769, 32.1544], zoom: 10, pitch: 0, bearing: 0, speed: 0.5 },
-            mapAnimation: 'flyTo',
-            onChapterEnter: [ { layer: 'satellite', opacity: 0.3, duration: 2000 } ]
+           
         },
 
         {
             id: 'context-overview',
             alignment: 'center',
             hidden: false,
-            subtitle: 'Geographic Context',
-            title: 'The Beita Region',
+            subtitle: 'Field Research',
+            title: 'Where Rescue Becomes Risk',
             image: './assets/02.JPG',
-            description: `Beita, a Palestinian town in the northern West Bank, sits at the intersection of critical medical evacuation routes. The town's location, surrounded by Israeli checkpoints and settlements, creates a complex geography of restricted movement that directly impacts emergency medical services.`,
-            source: 'Source: UN OCHA, November 2023',
+            description: `Testimonies gathered since October 2023 show a clear pattern. Responders are no longer navigating only the aftermath of violence. They are being pulled into its center. What should be routine medical missions now unfold in uncertainty, with each call carrying the possibility of obstruction, assault or delay.`,
+            source: 'Source: PHR-Israel, November 2025',
             location: { center: [35.2769, 32.1544], zoom: 12, pitch: 45, bearing: 20, speed: 0.8 },
-            mapAnimation: 'flyTo',
-            onChapterEnter: [
-                { layer: 'settlements-layer', opacity: 1, duration: 1500 },
-                { layer: 'checkpoint-markers', opacity: 1, duration: 1500 }
-            ],
-            onChapterExit: [ { layer: 'settlements-layer', opacity: 0, duration: 1000 } ]
+
         },
         
-        {
-            id: 'medical-infrastructure',
-            alignment: 'full',
+         {
+            id: 'west-bank-context01',
+            alignment: 'left',
             hidden: false,
-            title: 'Critical Medical Infrastructure Under Threat',
-            image: './assets/hospital-aerial.jpg',
-            description: 'The region\'s medical facilities serve over 50,000 residents, with ambulance response times critical for survival.',
-            location: { center: [35.2800, 32.1600], zoom: 14, pitch: 60, bearing: -45, speed: 0.5 },
-            mapAnimation: 'flyTo'
+            subtitle: 'oct. 2023 - may. 2024',
+            title: '480 attacks',
+            description: `According to the World Health Organization, 480 attacks on healthcare took place in the West Bank between October 7, 2023 and May 28, 2024. These attacks led to 16 deaths and 95 injuries and affected 54 health facilities, 20 mobile clinics and 319 ambulances.`,
+            source: 'Source: World Health Organization, Statement 2024',
+            location: { 
+                center: [35.25, 31.95], 
+                zoom: 7.5, 
+                pitch: 0, 
+                bearing: 0, 
+                speed: 0.7 
+            },
+            mapAnimation: 'flyTo',
+            onChapterEnter: [
+                { layer: 'west-bank-layer', visibility: 'visible' }
+            ],
+            onChapterExit: [
+                { layer: 'west-bank-layer', visibility: 'none' }
+            ]
         },
+
+         {
+            id: 'west-bank-context02',
+            alignment: 'left',
+            hidden: false,
+            subtitle: 'april. 2024 - dec. 2024',
+            title: '694 attacks',
+            description: `Additionally, the West Bank saw 694 attacks on healthcare between April and December 2024, causing 26 deaths and 121 injuries and impacting 62 health facilities, 22 mobile clinics and 475 ambulances.`,
+            source: 'Source: Humanitarian Situation Update No. 264, UN OCHA Feb. 2025',
+            location: { 
+                center: [35.25, 31.95], 
+                zoom: 7.5, 
+                pitch: 0, 
+                bearing: 0, 
+                speed: 0.7 
+            },
+            mapAnimation: 'flyTo',
+            onChapterEnter: [
+                { layer: 'west-bank-layer', visibility: 'visible' }
+            ],
+            onChapterExit: [
+                { layer: 'west-bank-layer', visibility: 'none' }
+            ]
+        },
+
+        {
+    id: 'nablus intro',
+    alignment: 'left',
+    title: 'Two-thirds',
+    hidden: false,
+    subtitle: 'Nablus Governorate',
+    description: `Nablus accounted for 68 percent of all recorded attacks on healthcare between 2022 and 2023. Additional areas impacted included Hebron, Jericho, Jenin, Bethlehem and Jerusalem.`,
+    source: 'Source: World Health Organization, News 2023',
+    
+    // --- ADVANCED CONFIGURATION ---
+    geojsonUrl: [
+        // File 1: Governorates (Polygons)
+        { 
+            url: './assets/governorates.geojson',
+            color: 'rgba(201, 41, 41, 0.53)',  // Blue fill
+            showFill: false,    // Yes, fill it
+            showLine: false,    // Yes, outline it
+            showPoint: true,   // No dots!
+
+
+            // --- MOVED CALLOUT SETTINGS HERE ---
+            labelField: 'name',      // Attribute name for the village
+            labelColor: '#000000',   // Black text usually looks best on polygons
+            opacity: 0.6,
+            labelSize: 11,
+            callout: true            // Activates the white box style
+            // -----------------------------------
+            
+        },
+        
+        // File 2: Lines/Roads (LineStrings)
+        { 
+            url: './assets/linesgov.geojson',
+            color: 'rgba(255, 0, 0, 0.83)',  // Red lines
+            opacity: 0.6,      // Controls transparency (0.0 to 1.0)
+            lineWidth: 3,      // Thicker lines look better (Default is 2)
+            showFill: false,   // CRITICAL: No fill = No artifacts
+            showLine: true,    // Yes, show line
+            showPoint: false   // CRITICAL: No points = No "series of dots"
+        }
+    ],
+    // ------------------------------
+
+    location: { center: [35.301675255000134, 32.15], zoom: 9, pitch: 0, bearing: 0, speed: 0.8 },
+    mapAnimation: 'flyTo'
+},
+
+ {
+    id: 'nablus',
+    alignment: 'left',
+    title: 'Checkpoints & Obstruction',
+    hidden: false,
+    subtitle: 'Nablus Governorate',
+    description: `Nablus governorate has 128 movement obstacles, including 32 occasionally staffed checkpoints and 9 constantly staffed checkpoints around Nablus city`,
+    source: 'Source: OCHA, News 2023',
+    
+    // --- ADVANCED CONFIGURATION ---
+    geojsonUrl: [
+        // File 1: Governorates (Polygons)
+        { 
+            url: './assets/nablus-checkpoints.geojson',
+            color: 'rgba(255, 115, 0, 1)',  // Blue fill
+            showFill: false,    // Yes, fill it
+            showLine: false,    // Yes, outline it
+            showPoint: true,   // No dots!
+        
+
+            // --- MOVED CALLOUT SETTINGS HERE ---
+            labelField: 'name',      // Attribute name for the village
+            labelColor: '#000000',   // Black text usually looks best on polygons
+            opacity: 0.4,
+            labelSize: 9,
+            // Activates the white box style
+            // -----------------------------------
+        },
+        
+        // File 2: Lines/Roads (LineStrings)
+        { 
+            url: './assets/nablus_bounds.geojson',
+            color: 'rgba(255, 0, 0, 0.83)',  // Red lines
+            opacity: 0.6,      // Controls transparency (0.0 to 1.0)
+            lineWidth: 3,      // Thicker lines look better (Default is 2)
+            showFill: false,   // CRITICAL: No fill = No artifacts
+            showLine: true,    // Yes, show line
+            showPoint: false   // CRITICAL: No points = No "series of dots"
+        }
+    ],
+    // ------------------------------
+
+    location: { center: [35.301675255000134, 32.15], zoom: 11, pitch: 0, bearing: 0, speed: 0.8 },
+    mapAnimation: 'flyTo'
+      },
+{
+    id: 'beita_aqraba',
+    alignment: 'left',
+    title: 'Beita, Aqraba and Usarin',
+    hidden: false,
+    subtitle: 'Southern Nablus Area',
+    description: `We documented attacks targeting paramedics and ambulance crews in the villages of Beita, Aqraba and Usarin, south of Nablus City. During field research, we interviewed ambulance drivers and paramedics and joined them as they returned to the sites of earlier violations.`,
+    source: 'Source: PHR - Israel',
+    location: { center: [35.2812, 32.1623], zoom: 11.5, pitch: 60, bearing: 45, speed: 0.8 },
+    mapAnimation: 'flyTo',
+    
+    // --- ADVANCED CONFIGURATION ---
+    geojsonUrl: [
+        // File 1: Checkpoints (Just Dots, No Labels)
+        { 
+            url: './assets/nablus-checkpoints.geojson',
+            color: 'rgba(101, 95, 95, 0.35)', 
+            showFill: false,    
+            showLine: false,    
+            showPoint: true    
+        },
+        
+        // File 2: Villages (Polygons WITH Callout Labels)
+        { 
+            url: './assets/villages.geojson',
+            color: 'rgba(255, 0, 0, 0.83)',
+            opacity: 0.3,      
+            lineWidth: 3,      
+            showFill: true,   
+            showLine: false,    
+            showPoint: false,
+            
+            // --- MOVED CALLOUT SETTINGS HERE ---
+            labelField: 'VNAME',      // Attribute name for the village
+            labelColor: '#000000',   // Black text usually looks best on polygons
+            labelSize: 11,
+            callout: true            // Activates the white box style
+            // -----------------------------------
+        }
+    ],
+},
+
         {
             id: 'evidence-grid',
             alignment: 'full',
@@ -95,7 +261,7 @@ var config = {
                 bearing: 0,
                 speed: 0.8
             },
-            mapAnimation: 'flyTo',
+            
             gridContent: [
                 {
                     type: 'video',
@@ -137,73 +303,6 @@ var config = {
             ]
         },
 
-        {
-            id: 'west-bank-context',
-            alignment: 'left',
-            hidden: false,
-            subtitle: 'Regional Overview',
-            title: 'The West Bank: A Fragmented Territory',
-            description: `The occupied West Bank is divided by over 700 checkpoints, roadblocks, and barriers. This fragmentation severely restricts Palestinian movement, with dire consequences for emergency medical access across the territory.`,
-            source: 'Source: UN OCHA, Movement and Access Report 2024',
-            location: { 
-                center: [35.25, 31.95], 
-                zoom: 7.5, 
-                pitch: 0, 
-                bearing: 0, 
-                speed: 0.7 
-            },
-            mapAnimation: 'flyTo',
-            onChapterEnter: [
-                { layer: 'west-bank-layer', visibility: 'visible' }
-            ],
-            onChapterExit: [
-                { layer: 'west-bank-layer', visibility: 'none' }
-            ]
-        },
-
-       {
-    id: 'my-new-dual-layer',
-    alignment: 'left',
-    title: 'Two Regions View',
-    hidden: false,
-    subtitle: 'Regional Overview',
-    description: `The occupied West Bank is divided by over 700 checkpoints, roadblocks, and barriers. This fragmentation severely restricts Palestinian movement, with dire consequences for emergency medical access across the territory.`,
-    source: 'Source: UN OCHA, Movement and Access Report 2024',
-    
-    // --- ADVANCED CONFIGURATION ---
-    geojsonUrl: [
-        // File 1: Governorates (Polygons)
-        { 
-            url: './assets/governorates.geojson',
-            color: 'rgba(201, 41, 41, 0.53)',  // Blue fill
-            showFill: false,    // Yes, fill it
-            showLine: false,    // Yes, outline it
-            showPoint: true,   // No dots!
-
-             // --- NEW: SHOW LABELS ---
-            labelField: 'name',    // <--- The exact attribute name in your GeoJSON
-            labelColor: '#de1111ff', // (Optional) Text color
-            opacity: 0.6, 
-            labelSize: 12          // (Optional) Text size
-            // ------------------------
-        },
-        
-        // File 2: Lines/Roads (LineStrings)
-        { 
-            url: './assets/linesgov.geojson',
-            color: 'rgba(255, 0, 0, 0.83)',  // Red lines
-            opacity: 0.6,      // Controls transparency (0.0 to 1.0)
-            lineWidth: 3,      // Thicker lines look better (Default is 2)
-            showFill: false,   // CRITICAL: No fill = No artifacts
-            showLine: true,    // Yes, show line
-            showPoint: false   // CRITICAL: No points = No "series of dots"
-        }
-    ],
-    // ------------------------------
-
-    location: { center: [35.301675255000134, 32.179289897000103], zoom: 9, pitch: 0, bearing: 0, speed: 0.8 },
-    mapAnimation: 'flyTo'
-},
 
         {
             id: 'testimony-ahmad',
