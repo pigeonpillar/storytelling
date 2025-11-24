@@ -266,39 +266,53 @@ var config = {
                 {
                     type: 'video',
                     src: './assets/IMG 8965.mp4',
-                    date: 'Oct 22, 2023',
-                    description: 'Direct fire on clearly marked medical vehicle.',
+                    date: 'Nov 15, 2025',
+                    description: 'Heavy military presence on major roads',
                     layout: 'span-2-col'
                 },
                 {
-                    type: 'video',
-                    src: './assets/IMG 9100.mp4',
-                    date: 'Oct 15, 2023',
+                    type: 'image',
+                    src: './assets/011.jpg',
+                    date: 'Jan 28, 2023',
                     description: 'Ambulance blocked at Huwara checkpoint.'
                 },
+
+                {
+                    type: 'image',
+                    src: './assets/06.jpg',
+                    date: 'April 20, 2024',
+                    description: 'An on-duty ambulance driver, Mohammad Musa Awadallah was shot during Israeli settlers attack on Al-Sawyeh'
+                },
+
                 {
                     type: 'image',
                     src: './assets/03.jpg',
-                    date: 'Nov 8, 2023',
-                    description: 'Damage to ambulance windshield after attack.'
+                    date: 'July 4, 2025',
+                    description: 'Ambulance headlight damaged during an attack by Israeli settlers in Beita.'
                 },
                 {
                     type: 'image',
-                    src: './assets/evidence-3.png',
-                    date: 'Nov 3, 2023',
+                    src: './assets/009.jpg',
+                    date: 'Jan 17, 2025',
+                    description: 'A tear-gas canister fired by Israeli occupation forces lands beside an ambulance in Beita, obstructing emergency medical access.'
+                },
+                {
+                    type: 'image',
+                    src: './assets/008.jpg',
+                    date: 'April 13, 2025',
                     description: 'Medical workers detained during emergency response.'
                 },
                 {
                     type: 'video',
-                    src: './assets/IMG 9039.mp4',
-                    date: 'Nov 15, 2023',
-                    description: 'Video testimony from driver Ahmad M.'
+                    src: './assets/013.mp4',
+                    date: 'Nov 15, 2025',
+                    description: 'Video testimony from paramedic Rana. A. S.'
                 },
                 {
                     type: 'image',
-                    src: './assets/CETW6636.JPG',
-                    date: 'Nov 12, 2023',
-                    description: 'Checkpoint obstruction of medical route.'
+                    src: './assets/012.jpg',
+                    date: 'June 13, 2025',
+                    description: 'Military gates obstruction of medical route.'
                 },
             ]
         },
