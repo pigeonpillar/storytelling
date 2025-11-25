@@ -266,7 +266,7 @@ function createStoryElements() {
                 const video = document.createElement('video');
                 video.src = record.fullscreenVideo;
                 video.muted = true;
-                video.loop = true;
+                video.loop = false; // NO LOOP - video plays once then shows text
                 video.playsInline = true;
                 video.setAttribute('playsinline', '');
                 video.setAttribute('webkit-playsinline', '');
@@ -1019,25 +1019,39 @@ function initializeScrollama(map, marker) {
                     if (typeof videoManager !== 'undefined') videoManager.resetVideos();
                 }
                 
-                // Fullscreen video autoplay with text fade
+                // Fullscreen video - text appears at END
                 if (chapter.fullscreenVideo) {
                     const video = response.element._fullscreenVideo;
                     const overlay = response.element._fullscreenOverlay;
                     
                     if (video) {
                         video.currentTime = 0;
+                        
+                        // Hide overlay initially (text hidden while video plays)
+                        if (overlay) {
+                            overlay.classList.add('hidden-initially');
+                            overlay.classList.remove('show-with-bg');
+                        }
+                        
                         video.play().then(() => {
                             console.log('✅ Fullscreen video playing');
-                            
-                            // Fade out overlay text after delay
-                            if (overlay) {
-                                setTimeout(() => {
-                                    overlay.classList.add('fade-out');
-                                }, 4000); // Start fade after 4 seconds
-                            }
                         }).catch(e => {
                             console.log('⚠️ Fullscreen video autoplay prevented:', e);
+                            // If autoplay fails, show overlay immediately
+                            if (overlay) {
+                                overlay.classList.remove('hidden-initially');
+                                overlay.classList.add('show-with-bg');
+                            }
                         });
+                        
+                        // Show overlay with black background when video ends
+                        video.onended = () => {
+                            console.log('🎬 Fullscreen video ended, showing text');
+                            if (overlay) {
+                                overlay.classList.remove('hidden-initially');
+                                overlay.classList.add('show-with-bg');
+                            }
+                        };
                     }
                 }
             };
@@ -1097,11 +1111,12 @@ function initializeScrollama(map, marker) {
                 if (video) {
                     video.pause();
                     video.muted = true;
+                    video.onended = null; // Remove listener
                 }
                 
-                // Reset overlay fade for next time
+                // Reset overlay for next time
                 if (overlay) {
-                    overlay.classList.remove('fade-out');
+                    overlay.classList.remove('hidden-initially', 'show-with-bg');
                 }
             }
             

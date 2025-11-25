@@ -403,6 +403,20 @@ a:hover {
     transition: opacity 2s ease-out;
 }
 
+/* Fullscreen video - hide overlay initially (text appears at end) */
+.step.fully .overlay-content.hidden-initially {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Fullscreen video - show overlay with black background at end */
+.step.fully .overlay-content.show-with-bg {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.85);
+    transition: opacity 1.5s ease-in, background 1.5s ease-in;
+    pointer-events: all;
+}
+
 .step > img, .step > iframe {
     position: fixed;
     top: 0;
