@@ -352,7 +352,7 @@ var config = {
     subtitle: 'Testimony #1 (Continued)',
     title: 'Rana A. S., Paramedic',
     image: './assets/ambulance-damage.jpg',
-    quote: `"They tried to make up any reasons or accuse me with anything regardless of the fact I was a paramedic in my official clothes."`,
+    quote: `"They tried to make up any reasons or accuse me with anything regardless of the fact I was a paramedic in my official uniform."`,
     description: `The Israeli occupation forces detained Rana for five hours, subjecting her to both verbal and physical assault. At the Huwara military camp, she was interrogated and compelled to unlock her phone.`,
     source: 'Interview conducted by PHRI, November 20, 2025',
     location: { center: [35.276064, 32.171868], zoom: 11.5, pitch: 70, bearing: 85, speed: 0.5 },
@@ -367,14 +367,14 @@ var config = {
          
 
        {
-    id: 'testimony-rana',
+    id: 'testimony-rana03',
     alignment: 'full',
     hidden: false,
     subtitle: 'Testimony #1 (Continued)',
     title: 'Rana A. S., Paramedic',
-    fullscreenVideo: './assets/rana.mp4',
-    quote: `"We waited 47 minutes while we could see the patient's vitals dropping. By the time we reached the hospital, it was too late."`,
-    description: `Fatima's account from October 22, 2023...`,
+    fullscreenVideo: './assets/rana02.mp4',
+    quote: `"There are no red lines left. Women, children, the elderly, olive trees, holy sites and mosques are no longer spared. In the center of our village, they have burned the mosques multiple times and sprayed hate speech across the walls."`,
+    description: `Rana’s account of events following 2023`,
     source: 'Interview conducted by PHRI, November 20, 2025',
     location: { center: [35.2745, 32.1567], zoom: 16, pitch: 45, bearing: -20, speed: 0.8 },
     mapAnimation: 'flyTo'
