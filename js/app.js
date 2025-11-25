@@ -1,9 +1,47 @@
 // ===== GLOBAL VARIABLES =====
 let map;
 let currentChapterId = null;
+let previousChapterId = null;
 let pendingAnimation = null;
 let videoObserver = null;
 let imageObserver = null;
+
+// ===== ROUTE ANIMATION STATE =====
+let routeAnimationFrame = null;
+let routeCoordinatesCache = null;
+let routeIsAnimating = false;
+let routeDataReady = false;
+
+// ===== RANA LAYER IDS (centralized) =====
+const RANA_LAYERS = ['incident-1-marker', 'incident-1-marker-pulse', 'ambulance-route-1'];
+const RANA_CHAPTERS = ['testimony-Rana01', 'testimony-Rana02'];
+
+function isRanaChapter(chapterId) {
+    return RANA_CHAPTERS.includes(chapterId);
+}
+
+function showRanaLayers() {
+    RANA_LAYERS.forEach(layerId => {
+        try {
+            if (map && map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', 'visible');
+            }
+        } catch (e) { console.warn('Could not show layer:', layerId, e); }
+    });
+    console.log('✅ Rana layers shown');
+}
+
+function hideRanaLayers() {
+    stopRouteAnimation();
+    RANA_LAYERS.forEach(layerId => {
+        try {
+            if (map && map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', 'none');
+            }
+        } catch (e) { console.warn('Could not hide layer:', layerId, e); }
+    });
+    console.log('🚫 Rana layers hidden');
+}
 
 // ===== INTERSECTION OBSERVERS =====
 function initializeObservers() {
@@ -39,6 +77,116 @@ function initializeObservers() {
         }, { rootMargin: '200px' });
     }
 }
+
+// ===== VIDEO INTRO HANDLER =====
+const videoIntroManager = {
+    playedVideos: new Set(),
+    
+    createVideoIntro: (container, videoPath, chapterId) => {
+        const videoIntro = document.createElement('div');
+        videoIntro.className = 'testimony-video-intro';
+        
+        const video = document.createElement('video');
+        video.src = videoPath;
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'testimony-video-overlay';
+        
+        const playButton = document.createElement('div');
+        playButton.className = 'testimony-play-button';
+        
+        overlay.appendChild(playButton);
+        videoIntro.appendChild(video);
+        videoIntro.appendChild(overlay);
+        
+        const unmuteBtn = document.createElement('button');
+        unmuteBtn.className = 'testimony-unmute-btn';
+        unmuteBtn.innerHTML = '🔇';
+        unmuteBtn.style.display = 'none';
+        videoIntro.appendChild(unmuteBtn);
+        
+        container.appendChild(videoIntro);
+        
+        overlay.addEventListener('click', () => {
+            video.muted = false;
+            video.play();
+            overlay.classList.add('hidden');
+            unmuteBtn.style.display = 'none';
+        });
+        
+        unmuteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            video.muted = !video.muted;
+            unmuteBtn.innerHTML = video.muted ? '🔇' : '🔊';
+        });
+        
+        video.addEventListener('ended', () => {
+            videoIntroManager.transitionToCard(videoIntro, container, chapterId);
+        });
+        
+        video.addEventListener('playing', () => {
+            overlay.classList.add('hidden');
+            if (video.muted) {
+                unmuteBtn.style.display = 'block';
+            }
+        });
+        
+        return { videoIntro, video };
+    },
+    
+    transitionToCard: (videoIntro, container, chapterId) => {
+        console.log('🎬 Video ended, transitioning to card for:', chapterId);
+        
+        videoIntro.classList.add('hidden');
+        
+        const content = container.querySelector('.testimony-content');
+        if (content) {
+            setTimeout(() => {
+                content.classList.add('visible');
+                
+                if (!content.querySelector('.replay-video-btn')) {
+                    const replayBtn = document.createElement('button');
+                    replayBtn.className = 'replay-video-btn';
+                    replayBtn.innerHTML = '↻ Replay Video';
+                    replayBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const video = container.querySelector('video');
+                        if (video) {
+                            videoIntro.classList.remove('hidden');
+                            content.classList.remove('visible');
+                            video.currentTime = 0;
+                            video.muted = false;
+                            video.play();
+                            
+                            const overlay = videoIntro.querySelector('.testimony-video-overlay');
+                            if (overlay) overlay.classList.add('hidden');
+                        }
+                    });
+                    
+                    content.insertBefore(replayBtn, content.firstChild);
+                }
+            }, 500);
+        }
+        
+        videoIntroManager.playedVideos.add(chapterId);
+    },
+    
+    tryAutoplay: (video) => {
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.log('Autoplay prevented, showing play button');
+            });
+        }
+    },
+    
+    hasPlayedVideo: (chapterId) => {
+        return videoIntroManager.playedVideos.has(chapterId);
+    }
+};
 
 // ===== ASSET PRELOADING =====
 function preloadChapterAssets(chapterIndex) {
@@ -110,64 +258,165 @@ function createStoryElements() {
             grid.id = 'evidence-grid-container';
             chapter.appendChild(grid);
         } else if (record.alignment === 'full') {
-            if (record.image) {
+            if (record.fullscreenVideo) {
+                // Fullscreen video chapter
+                const videoContainer = document.createElement('div');
+                videoContainer.className = 'fullscreen-video-container';
+                
+                const video = document.createElement('video');
+                video.src = record.fullscreenVideo;
+                video.muted = true;
+                video.loop = true;
+                video.playsInline = true;
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.preload = 'auto';
+                video.className = 'fullscreen-video';
+                
+                const muteBtn = document.createElement('button');
+                muteBtn.className = 'fullscreen-mute-btn';
+                muteBtn.innerHTML = '🔇';
+                
+                muteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    video.muted = !video.muted;
+                    muteBtn.innerHTML = video.muted ? '🔇' : '🔊';
+                });
+                
+                videoContainer.appendChild(video);
+                videoContainer.appendChild(muteBtn);
+                container.appendChild(videoContainer);
+                
+                // Store reference on CONTAINER for autoplay control
+                container._fullscreenVideo = video;
+                container._fullscreenOverlay = null; // Will be set after overlay is created
+            } else if (record.image) {
                 const img = new Image();
                 if (imageObserver) { img.setAttribute('data-src', record.image); imageObserver.observe(img); } 
                 else { img.src = record.image; }
                 container.appendChild(img);
             }
+            
             const overlay = document.createElement('div');
             overlay.className = 'overlay-content';
+            if (record.subtitle) {
+                const s = document.createElement('div');
+                s.className = 'subtitle';
+                s.innerText = record.subtitle;
+                overlay.appendChild(s);
+            }
             if (record.title) {
                 const t = document.createElement('h3');
                 t.innerHTML = record.title;
                 overlay.appendChild(t);
+            }
+            if (record.quote) {
+                const q = document.createElement('blockquote');
+                q.innerHTML = record.quote;
+                overlay.appendChild(q);
             }
             if (record.description) {
                 const d = document.createElement('p');
                 d.innerHTML = record.description;
                 overlay.appendChild(d);
             }
-            chapter.appendChild(overlay);
-        } else {
-            if (record.image) {
-                const img = new Image();
-                if (imageObserver) { img.setAttribute('data-src', record.image); imageObserver.observe(img); } 
-                else { img.src = record.image; }
-                container.appendChild(img);
-            } else if (record.video) {
-                const vid = document.createElement('iframe');
-                vid.src = record.video;
-                vid.setAttribute('frameborder', '0');
-                vid.setAttribute('allowfullscreen', '');
-                container.appendChild(vid);
-            }
-            if (record.subtitle) {
-                const s = document.createElement('div');
-                s.className = 'subtitle';
-                s.innerText = record.subtitle;
-                chapter.appendChild(s);
-            }
-            if (record.title) {
-                const t = document.createElement('h3');
-                t.innerHTML = record.title;
-                chapter.appendChild(t);
-            }
-            if (record.description) {
-                const d = document.createElement('p');
-                d.innerHTML = record.description;
-                chapter.appendChild(d);
-            }
-            if (record.quote) {
-                const q = document.createElement('blockquote');
-                q.innerHTML = record.quote;
-                chapter.appendChild(q);
-            }
             if (record.source) {
                 const src = document.createElement('div');
                 src.className = 'source';
                 src.innerHTML = record.source;
-                chapter.appendChild(src);
+                overlay.appendChild(src);
+            }
+            chapter.appendChild(overlay);
+            
+            // Store overlay reference for fullscreen video fade
+            if (record.fullscreenVideo) {
+                container._fullscreenOverlay = overlay;
+            }
+        } else {
+            const hasVideoIntro = record.videoIntro && record.videoIntro.enabled;
+            
+            if (hasVideoIntro) {
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'testimony-content';
+                
+                if (record.subtitle) {
+                    const s = document.createElement('div');
+                    s.className = 'subtitle';
+                    s.innerText = record.subtitle;
+                    contentWrapper.appendChild(s);
+                }
+                if (record.title) {
+                    const t = document.createElement('h3');
+                    t.innerHTML = record.title;
+                    contentWrapper.appendChild(t);
+                }
+                if (record.description) {
+                    const d = document.createElement('p');
+                    d.innerHTML = record.description;
+                    contentWrapper.appendChild(d);
+                }
+                if (record.quote) {
+                    const q = document.createElement('blockquote');
+                    q.innerHTML = record.quote;
+                    contentWrapper.appendChild(q);
+                }
+                if (record.source) {
+                    const src = document.createElement('div');
+                    src.className = 'source';
+                    src.innerHTML = record.source;
+                    contentWrapper.appendChild(src);
+                }
+                
+                chapter.appendChild(contentWrapper);
+                
+                const { videoIntro, video } = videoIntroManager.createVideoIntro(
+                    chapter, 
+                    record.videoIntro.path,
+                    record.id
+                );
+                
+                chapter._videoIntro = video;
+                chapter._chapterId = record.id;
+            } else {
+                if (record.image) {
+                    const img = new Image();
+                    if (imageObserver) { img.setAttribute('data-src', record.image); imageObserver.observe(img); } 
+                    else { img.src = record.image; }
+                    container.appendChild(img);
+                } else if (record.video) {
+                    const vid = document.createElement('iframe');
+                    vid.src = record.video;
+                    vid.setAttribute('frameborder', '0');
+                    vid.setAttribute('allowfullscreen', '');
+                    container.appendChild(vid);
+                }
+                if (record.subtitle) {
+                    const s = document.createElement('div');
+                    s.className = 'subtitle';
+                    s.innerText = record.subtitle;
+                    chapter.appendChild(s);
+                }
+                if (record.title) {
+                    const t = document.createElement('h3');
+                    t.innerHTML = record.title;
+                    chapter.appendChild(t);
+                }
+                if (record.description) {
+                    const d = document.createElement('p');
+                    d.innerHTML = record.description;
+                    chapter.appendChild(d);
+                }
+                if (record.quote) {
+                    const q = document.createElement('blockquote');
+                    q.innerHTML = record.quote;
+                    chapter.appendChild(q);
+                }
+                if (record.source) {
+                    const src = document.createElement('div');
+                    src.className = 'source';
+                    src.innerHTML = record.source;
+                    chapter.appendChild(src);
+                }
             }
         }
         
@@ -215,7 +464,6 @@ function buildEvidenceGrid(gridContent) {
             video.muted = true;
             video.loop = true; 
             video.setAttribute('playsinline', '');
-            
             video.preload = 'metadata'; 
             video.setAttribute('data-src', item.src);
             video.src = item.src; 
@@ -326,7 +574,7 @@ function initializeMarker(map) {
     return null;
 }
 
-// ===== DYNAMIC LAYER LOADER (WITH DEBUG LOGGING) =====
+// ===== DYNAMIC LAYER LOADER =====
 function loadDynamicLayers(map) {
     console.log("🔄 Scanning config.js for GeoJSON files...");
     
@@ -366,14 +614,10 @@ function loadDynamicLayers(map) {
                 const pointId = `layer-circle-${chapter.id}${suffix}`;
                 const labelId = `layer-symbol-${chapter.id}${suffix}`;
 
-                // 1. Add Source
                 if (!map.getSource(sourceId)) {
                     map.addSource(sourceId, { type: 'geojson', data: url });
                 }
 
-                // 2. Add Layers
-                
-                // Fill
                 if (!map.getLayer(fillId)) {
                     map.addLayer({
                         id: fillId, type: 'fill', source: sourceId,
@@ -382,7 +626,6 @@ function loadDynamicLayers(map) {
                     });
                 }
 
-                // Line
                 if (!map.getLayer(lineId)) {
                     map.addLayer({
                         id: lineId, type: 'line', source: sourceId,
@@ -391,7 +634,6 @@ function loadDynamicLayers(map) {
                     });
                 }
 
-                // Point
                 if (!map.getLayer(pointId)) {
                     map.addLayer({
                         id: pointId, type: 'circle', source: sourceId,
@@ -400,29 +642,22 @@ function loadDynamicLayers(map) {
                     });
                 }
 
-                // Label (WITH DEBUG LOGGING)
                 if (labelField && !map.getLayer(labelId)) {
-                    
                     const layoutConfig = {
                         'visibility': 'none',
                         'text-field': ['get', labelField],
-                        'text-size': input.labelSize || 13,
                         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                        
-                        // --- VERY AGGRESSIVE COLLISION DETECTION ---
-                        'text-allow-overlap': false,      // Don't overlap with other labels
-                        'text-ignore-placement': false,   // Respect other symbols
-                        'text-optional': true,            // Hide if no room (don't force)
-                        'text-padding': 100,              // INCREASED from 50 to 100px - very large spacing
-                        'symbol-spacing': 500,            // INCREASED from 250 to 500 - huge distance between labels
-                        'text-max-width': 8,              // Reduced to wrap labels more aggressively
-                        // Zoom-based visibility - only show at close zoom
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-optional': true,
+                        'text-padding': 100,
+                        'symbol-spacing': 500,
+                        'text-max-width': 8,
                         'text-size': [
                             'interpolate', ['linear'], ['zoom'],
-                            12, 0,                        // Invisible at zoom 12 and below
-                            13, input.labelSize || 13     // Normal size at zoom 13+
+                            12, 0,
+                            13, input.labelSize || 13
                         ]
-                        // -------------------------------------
                     };
                     const paintConfig = {
                         'text-color': input.labelColor || '#000000',
@@ -435,11 +670,8 @@ function loadDynamicLayers(map) {
                         paintConfig['text-halo-color'] = '#ffffff';
                         paintConfig['text-halo-width'] = 10;
                         paintConfig['text-halo-blur'] = 0;
-                        
-                        // Callouts are more important, so override to always show them
                         layoutConfig['text-allow-overlap'] = true;
                         layoutConfig['text-ignore-placement'] = true;
-                        // Remove the zoom restriction for callouts
                         layoutConfig['text-size'] = input.labelSize || 13;
                     } else {
                         layoutConfig['text-offset'] = [0, -1.5];
@@ -454,13 +686,9 @@ function loadDynamicLayers(map) {
                         paint: paintConfig
                     });
                     
-                    // Move label layer to the top so it's always visible above polygons/lines/points
                     map.moveLayer(labelId);
-                    
-                    console.log('✅ Created label layer:', labelId, 'for field:', labelField, '(moved to top, very aggressive collision enabled)');
                 }
 
-                // 3. Add Triggers
                 if (!chapter.onChapterEnter) chapter.onChapterEnter = [];
                 if (!chapter.onChapterExit) chapter.onChapterExit = [];
                 
@@ -476,11 +704,145 @@ function loadDynamicLayers(map) {
                 addTrigger(pointId, showPoint, specificOpacity);
                 if (labelField) {
                     addTrigger(labelId, true, 1);
-                    console.log('🎯 Added label trigger for:', labelId, 'in chapter:', chapter.id);
                 }
             });
         }
     });
+}
+
+// ===== MAPBOX DIRECTIONS API =====
+async function fetchRoute(startCoords, endCoords) {
+    console.log('🚗 Fetching route from:', startCoords, 'to:', endCoords);
+    const accessToken = config.accessToken;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startCoords[0]},${startCoords[1]};${endCoords[0]},${endCoords[1]}?geometries=geojson&access_token=${accessToken}`;
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.routes && data.routes.length > 0) {
+            console.log('✅ Route found with', data.routes[0].geometry.coordinates.length, 'points');
+            return data.routes[0].geometry;
+        } else {
+            console.warn('⚠️ No route found, using straight line');
+            return { type: 'LineString', coordinates: [startCoords, endCoords] };
+        }
+    } catch (error) {
+        console.error('❌ Error fetching route:', error);
+        return { type: 'LineString', coordinates: [startCoords, endCoords] };
+    }
+}
+
+// ===== ANIMATED ROUTE =====
+function animateRoute(routeLayerId, loop = false) {
+    if (routeIsAnimating) {
+        console.log('⏭️ Route animation already running');
+        return;
+    }
+    
+    console.log('🎬 Starting route animation');
+    stopRouteAnimation();
+    
+    if (!map || !map.getLayer(routeLayerId)) {
+        console.error('❌ Map or layer not found:', routeLayerId);
+        return;
+    }
+    
+    const source = map.getSource('rana-route-source');
+    if (!source) {
+        console.error('❌ Source not found');
+        return;
+    }
+    
+    if (!routeDataReady || !routeCoordinatesCache || routeCoordinatesCache.length < 2) {
+        console.warn('⏳ Route data not ready, retrying...');
+        setTimeout(() => animateRoute(routeLayerId, loop), 500);
+        return;
+    }
+    
+    const fullRoute = routeCoordinatesCache;
+    const totalPoints = fullRoute.length;
+    
+    routeIsAnimating = true;
+    
+    const animationDuration = 5000;
+    let startTime = null;
+    let lastPointCount = 0;
+    
+    const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    
+    const drawRoute = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        
+        const elapsed = timestamp - startTime;
+        const rawProgress = Math.min(elapsed / animationDuration, 1);
+        const easedProgress = easeInOutCubic(rawProgress);
+        const pointsToShow = Math.max(2, Math.floor(totalPoints * easedProgress));
+        
+        if (pointsToShow !== lastPointCount) {
+            lastPointCount = pointsToShow;
+            try {
+                source.setData({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: { type: 'LineString', coordinates: fullRoute.slice(0, pointsToShow) }
+                });
+            } catch (e) {
+                console.error('❌ Error updating route:', e);
+                stopRouteAnimation();
+                return;
+            }
+        }
+        
+        if (rawProgress < 1) {
+            routeAnimationFrame = requestAnimationFrame(drawRoute);
+        } else {
+            // Complete
+            try {
+                source.setData({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: { type: 'LineString', coordinates: fullRoute }
+                });
+            } catch (e) { /* ignore */ }
+            
+            if (loop) {
+                // Pause then restart
+                setTimeout(() => {
+                    if (routeIsAnimating) {
+                        lastPointCount = 0;
+                        startTime = null;
+                        routeAnimationFrame = requestAnimationFrame(drawRoute);
+                    }
+                }, 2000);
+            } else {
+                routeIsAnimating = false;
+            }
+        }
+    };
+    
+    routeAnimationFrame = requestAnimationFrame(drawRoute);
+}
+
+function stopRouteAnimation() {
+    if (routeAnimationFrame) {
+        cancelAnimationFrame(routeAnimationFrame);
+        routeAnimationFrame = null;
+    }
+    routeIsAnimating = false;
+}
+
+function resetRouteDisplay() {
+    const source = map?.getSource('rana-route-source');
+    if (source && routeCoordinatesCache && routeCoordinatesCache.length > 0) {
+        try {
+            source.setData({
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'LineString', coordinates: [routeCoordinatesCache[0]] }
+            });
+        } catch (e) { /* ignore */ }
+    }
 }
 
 // ===== SCROLL HANDLING =====
@@ -493,7 +855,7 @@ function initializeScrollama(map, marker) {
         const loader = document.getElementById('loader');
         if(loader) loader.classList.add('hidden');
         
-        // 1. Hardcoded West Bank
+        // West Bank layer
         map.addSource('west-bank-source', { type: 'geojson', data: './assets/WB.geojson' });
         map.addLayer({
             id: 'west-bank-layer', type: 'fill', source: 'west-bank-source',
@@ -501,10 +863,78 @@ function initializeScrollama(map, marker) {
             paint: { 'fill-color': '#e74c3c', 'fill-opacity': 0.6, 'fill-outline-color': '#000000' }
         });
 
-        // 2. Dynamic Loader
+        // Rana route source
+        map.addSource('rana-route-source', {
+            type: 'geojson',
+            data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } }
+        });
+        
+        // Fetch route
+        const startPoint = [35.310094, 32.125524];
+        const endPoint = [35.276064, 32.171868];
+        
+        fetchRoute(startPoint, endPoint).then(routeGeometry => {
+            if (routeGeometry.coordinates) {
+                routeCoordinatesCache = routeGeometry.coordinates;
+                routeDataReady = true;
+                console.log('✅ Route cached:', routeCoordinatesCache.length, 'points');
+            }
+        });
+        
+        // Route line layer - STARTS HIDDEN
+        map.addLayer({
+            id: 'ambulance-route-1',
+            type: 'line',
+            source: 'rana-route-source',
+            layout: { 'visibility': 'none', 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': '#e74c3c', 'line-width': 5, 'line-opacity': 1 }
+        });
+        
+        // Markers source
+        map.addSource('rana-markers-source', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: [
+                    { type: 'Feature', properties: { type: 'assault' }, geometry: { type: 'Point', coordinates: startPoint } },
+                    { type: 'Feature', properties: { type: 'detention' }, geometry: { type: 'Point', coordinates: endPoint } }
+                ]
+            }
+        });
+        
+        // Markers layer - STARTS HIDDEN
+        map.addLayer({
+            id: 'incident-1-marker',
+            type: 'circle',
+            source: 'rana-markers-source',
+            layout: { 'visibility': 'none' },
+            paint: {
+                'circle-color': ['match', ['get', 'type'], 'assault', '#e74c3c', 'detention', '#c0392b', '#333'],
+                'circle-radius': 10,
+                'circle-stroke-width': 3,
+                'circle-stroke-color': '#fff'
+            }
+        });
+        
+        // Pulse layer - STARTS HIDDEN
+        map.addLayer({
+            id: 'incident-1-marker-pulse',
+            type: 'circle',
+            source: 'rana-markers-source',
+            layout: { 'visibility': 'none' },
+            paint: {
+                'circle-color': 'transparent',
+                'circle-radius': 15,
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#e74c3c',
+                'circle-stroke-opacity': 0.5
+            }
+        });
+
+        // Dynamic layers
         loadDynamicLayers(map);
         
-        // 3. 3D Terrain
+        // 3D Terrain
         const mode = config.performanceMode || 'auto';
         const isHighEnd = (typeof utils.isHighEndDevice === 'function') ? utils.isHighEndDevice() : !utils.isMobile();
         const useHighQuality = mode === 'high' || (mode === 'auto' && isHighEnd);
@@ -513,14 +943,15 @@ function initializeScrollama(map, marker) {
             try {
                 map.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
                 map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-            } catch(e) { console.warn("Terrain failed", e); }
+            } catch(e) { /* ignore */ }
         }
         
-        // 4. Scrollama
+        // Scrollama setup
         scroller.setup({ 
             step: '.step', 
             offset: utils.isMobile() ? appConfig.mobile.scrollOffset : appConfig.mobile.desktopScrollOffset,
-            progress: true, debug: false 
+            progress: true, 
+            debug: false 
         })
         .onStepEnter(async (response) => {
             if (pendingAnimation) { map.stop(); pendingAnimation = null; }
@@ -529,8 +960,30 @@ function initializeScrollama(map, marker) {
             const chapter = config.chapters[current_chapter];
             if (!chapter) return;
 
+            // Store previous before updating current
+            previousChapterId = currentChapterId;
             currentChapterId = response.element.id;
             response.element.classList.add('active');
+            
+            console.log('📍 ENTER:', currentChapterId, '| PREVIOUS:', previousChapterId);
+            
+            // Determine Rana state
+            const nowInRana = isRanaChapter(currentChapterId);
+            const wasInRana = isRanaChapter(previousChapterId);
+            
+            // SHOW Rana layers when entering Rana from non-Rana
+            if (nowInRana && !wasInRana) {
+                console.log('🚑 SHOWING Rana layers');
+                showRanaLayers();
+                resetRouteDisplay();
+                setTimeout(() => animateRoute('ambulance-route-1', true), 300);
+            }
+            
+            // HIDE Rana layers when leaving Rana to non-Rana
+            if (!nowInRana && wasInRana) {
+                console.log('🚑 HIDING Rana layers');
+                hideRanaLayers();
+            }
             
             // Prefetch
             const prefetchCount = config.prefetchDistance || 1;
@@ -544,26 +997,48 @@ function initializeScrollama(map, marker) {
             const isMoving = utils.hasLocationChanged(currentCenter, newCenter) || Math.abs(map.getZoom() - chapter.location.zoom) > 0.1;
             
             const triggerLayers = () => {
-                if (currentChapterId !== response.element.id) return; 
+                if (currentChapterId !== response.element.id) return;
+                
                 if (chapter.onChapterEnter) {
-                    console.log('🚀 Triggering layers for chapter:', chapter.id);
-                    chapter.onChapterEnter.forEach(setLayerOpacity);
-                    
-                    // After showing layers, ensure all label layers are on top
                     chapter.onChapterEnter.forEach(layerConfig => {
-                        if (layerConfig.layer && layerConfig.layer.includes('layer-symbol-')) {
-                            try {
-                                map.moveLayer(layerConfig.layer);
-                                console.log('📌 Moved label to top:', layerConfig.layer);
-                            } catch (e) {
-                                // Layer might not exist, ignore
-                            }
-                        }
+                        // Skip Rana layers - handled separately
+                        if (RANA_LAYERS.includes(layerConfig.layer)) return;
+                        setLayerOpacity(layerConfig);
                     });
                 }
+                
+                // Video intro
+                if (chapter.videoIntro && chapter.videoIntro.enabled && !videoIntroManager.hasPlayedVideo(chapter.id)) {
+                    const chapterElement = response.element.querySelector('div');
+                    const video = chapterElement._videoIntro;
+                    if (video) videoIntroManager.tryAutoplay(video);
+                }
+                
                 if (chapter.id === 'evidence-grid') {
                     buildEvidenceGrid(chapter.gridContent);
                     if (typeof videoManager !== 'undefined') videoManager.resetVideos();
+                }
+                
+                // Fullscreen video autoplay with text fade
+                if (chapter.fullscreenVideo) {
+                    const video = response.element._fullscreenVideo;
+                    const overlay = response.element._fullscreenOverlay;
+                    
+                    if (video) {
+                        video.currentTime = 0;
+                        video.play().then(() => {
+                            console.log('✅ Fullscreen video playing');
+                            
+                            // Fade out overlay text after delay
+                            if (overlay) {
+                                setTimeout(() => {
+                                    overlay.classList.add('fade-out');
+                                }, 4000); // Start fade after 4 seconds
+                            }
+                        }).catch(e => {
+                            console.log('⚠️ Fullscreen video autoplay prevented:', e);
+                        });
+                    }
                 }
             };
 
@@ -593,12 +1068,49 @@ function initializeScrollama(map, marker) {
         .onStepExit(response => {
             const chapter = config.chapters.find(chap => chap.id === response.element.id);
             response.element.classList.remove('active');
-            if (chapter) {
-                if (chapter.id === 'evidence-grid') {
-                    cleanupEvidenceGrid();
-                    if (typeof videoManager !== 'undefined') videoManager.cleanupVideos();
+            
+            if (!chapter) return;
+            
+            console.log('📤 EXIT:', chapter.id);
+            
+            if (chapter.id === 'evidence-grid') {
+                cleanupEvidenceGrid();
+                if (typeof videoManager !== 'undefined') videoManager.cleanupVideos();
+            }
+            
+            // Video cleanup
+            if (chapter.videoIntro && chapter.videoIntro.enabled) {
+                const chapterElement = response.element.querySelector('div');
+                const video = chapterElement._videoIntro;
+                if (video) {
+                    video.pause();
+                    video.currentTime = 0;
+                    video.muted = true;
                 }
-                if (chapter.onChapterExit) chapter.onChapterExit.forEach(setLayerOpacity);
+            }
+            
+            // Fullscreen video cleanup
+            if (chapter.fullscreenVideo) {
+                const video = response.element._fullscreenVideo;
+                const overlay = response.element._fullscreenOverlay;
+                
+                if (video) {
+                    video.pause();
+                    video.muted = true;
+                }
+                
+                // Reset overlay fade for next time
+                if (overlay) {
+                    overlay.classList.remove('fade-out');
+                }
+            }
+            
+            // Normal layer exit - skip Rana layers
+            if (chapter.onChapterExit) {
+                chapter.onChapterExit.forEach(layerConfig => {
+                    if (RANA_LAYERS.includes(layerConfig.layer)) return;
+                    setLayerOpacity(layerConfig);
+                });
             }
         });
     });
@@ -621,26 +1133,15 @@ function getLayerPaintType(layer) {
 }
 
 function setLayerOpacity(layer) {
-    console.log('🎨 setLayerOpacity called:', layer);
-    
-    if (!map || !map.getLayer) {
-        console.warn('❌ Map not ready');
-        return;
-    }
-    
-    if (!map.getLayer(layer.layer)) {
-        console.warn('❌ Layer not found:', layer.layer);
-        return;
-    }
+    if (!map || !map.getLayer) return;
+    if (!map.getLayer(layer.layer)) return;
     
     try {
         if (layer.hasOwnProperty('visibility')) {
-            console.log('✅ Setting visibility:', layer.layer, '→', layer.visibility);
             map.setLayoutProperty(layer.layer, 'visibility', layer.visibility);
             return;
         }
         if (layer.hasOwnProperty('opacity')) {
-            console.log('✅ Setting opacity:', layer.layer, '→', layer.opacity);
             const paintProps = getLayerPaintType(layer.layer);
             paintProps.forEach(function(prop) {
                 if (layer.duration) {
@@ -654,7 +1155,17 @@ function setLayerOpacity(layer) {
     }
 }
 
-// ===== APPLICATION INITIALIZATION =====
+// ===== CLEANUP =====
+function cleanup() {
+    stopRouteAnimation();
+    if (videoObserver) { videoObserver.disconnect(); videoObserver = null; }
+    if (imageObserver) { imageObserver.disconnect(); imageObserver = null; }
+    if (map) { map.remove(); map = null; }
+}
+
+window.addEventListener('beforeunload', cleanup);
+
+// ===== INITIALIZATION =====
 function initializeApp() {
     console.log("🚀 Initializing App...");
     initializeObservers();

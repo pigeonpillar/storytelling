@@ -317,43 +317,69 @@ var config = {
             ]
         },
 
+        // testimony-Rana01 - First testimony chapter (with video intro)
+{
+    id: 'testimony-Rana01',
+    alignment: 'left',
+    hidden: false,
+    subtitle: 'Testimony #1',
+    title: 'Rana A. S., Paramedic',
+    image: '', // Video replaces this
+    quote: `"I hadn't even stepped out of the ambulance. They assaulted us while we were still inside the vehicle, and then detained me."`,
+    description: `On November 22, 2024, Israeli occupation forces assaulted members of an ambulance crew belonging to the Aqraba Municipality and arrested Rana while they were providing coverage during clashes in the village of Osarin, south of Nablus.`,
+    source: 'Interview conducted by PHRI, November 20, 2025',
+    location: { center: [35.310094, 32.125524], zoom: 16, pitch: 60, bearing: 45, speed: 0.8 },
+    mapAnimation: 'flyTo',
+    
+    // Video intro
+    videoIntro: {
+        enabled: true,
+        path: './assets/rana.mp4'
+    },
+    
+    onChapterEnter: [
+        { layer: 'incident-1-marker', visibility: 'visible' },
+        { layer: 'ambulance-route-1', visibility: 'visible' }
+    ]
+    // NO onChapterExit - handled by code with force-hide
+},
 
-        {
-            id: 'testimony-ahmad',
-            alignment: 'right',
-            hidden: false,
-            subtitle: 'Testimony #1',
-            title: 'Ahmad M., Ambulance Driver',
-            image: './assets/ambulance-damage.jpg',
-            quote: `"We had our sirens on, lights flashing... they opened fire directly at the vehicle."`,
-            description: `On November 15, 2023, Ahmad's clearly marked ambulance came under direct fire at an Israeli checkpoint.`,
-            source: 'Interview conducted by PHRI, November 20, 2023',
-            location: { center: [35.2812, 32.1623], zoom: 16, pitch: 60, bearing: 45, speed: 0.8 },
-            mapAnimation: 'flyTo',
-            onChapterEnter: [
-                { layer: 'incident-1-marker', opacity: 1, duration: 1000 },
-                { layer: 'ambulance-route-1', opacity: 1, duration: 2000 }
-            ],
-            onChapterExit: [ { layer: 'incident-1-marker', opacity: 0, duration: 500 } ]
-        },
-        {
-            id: 'testimony-fatima',
-            alignment: 'left',
-            hidden: false,
-            subtitle: 'Testimony #2',
-            title: 'Fatima R., Paramedic',
-            video: './assets/IMG_9041.MOV',
-            quote: `"We waited 47 minutes while we could see the patient's vitals dropping. By the time we reached the hospital, it was too late."`,
-            description: `Fatima's account from October 22, 2023, describes how checkpoint delays directly resulted in preventable deaths.`,
-            source: 'Video testimony recorded by B\'Tselem, October 28, 2023',
-            location: { center: [35.2745, 32.1567], zoom: 16, pitch: 45, bearing: -20, speed: 0.8 },
-            mapAnimation: 'flyTo',
-            onChapterEnter: [
-                { layer: 'incident-2-marker', opacity: 1, duration: 1000 },
-                { layer: 'checkpoint-delay-radius', opacity: 0.5, duration: 2000 }
-            ],
-            onChapterExit: [ { layer: 'incident-2-marker', opacity: 0, duration: 500 } ]
-        },
+// testimony-Rana02 - Second testimony chapter (continuation)
+{
+    id: 'testimony-Rana02',
+    alignment: 'left',
+    hidden: false,
+    subtitle: 'Testimony #1 (Continued)',
+    title: 'Rana A. S., Paramedic',
+    image: './assets/ambulance-damage.jpg',
+    quote: `"They tried to make up any reasons or accuse me with anything regardless of the fact I was a paramedic in my official clothes."`,
+    description: `The Israeli occupation forces detained Rana for five hours, subjecting her to both verbal and physical assault. At the Huwara military camp, she was interrogated and compelled to unlock her phone.`,
+    source: 'Interview conducted by PHRI, November 20, 2025',
+    location: { center: [35.276064, 32.171868], zoom: 11.5, pitch: 70, bearing: 85, speed: 0.5 },
+    mapAnimation: 'flyTo',
+    
+    onChapterEnter: [
+        { layer: 'incident-1-marker', visibility: 'visible' },
+        { layer: 'ambulance-route-1', visibility: 'visible' }
+    ]
+    // NO onChapterExit - handled by code with force-hide
+},
+         
+
+       {
+    id: 'testimony-rana',
+    alignment: 'full',
+    hidden: false,
+    subtitle: 'Testimony #1 (Continued)',
+    title: 'Rana A. S., Paramedic',
+    fullscreenVideo: './assets/rana.mp4',
+    quote: `"We waited 47 minutes while we could see the patient's vitals dropping. By the time we reached the hospital, it was too late."`,
+    description: `Fatima's account from October 22, 2023...`,
+    source: 'Interview conducted by PHRI, November 20, 2025',
+    location: { center: [35.2745, 32.1567], zoom: 16, pitch: 45, bearing: -20, speed: 0.8 },
+    mapAnimation: 'flyTo'
+},
+
         {
             id: 'pattern-analysis',
             alignment: 'center',

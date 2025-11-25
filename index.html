@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset='utf-8' />
     <title>Under Fire: Medical Workers in Beita</title>
@@ -15,35 +14,33 @@
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Crimson+Pro:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
     <link rel="stylesheet" href="styles/main.css">
 </head>
-
 <body>
     <!-- Loading screen -->
     <div class="loading" id="loader">
         <div class="loading-spinner"></div>
     </div>
-
+    
     <!-- Progress bar -->
     <div class="progress-bar" id="progress"></div>
-
+    
     <!-- Map container -->
     <div id="map"></div>
     
     <!-- Story container -->
     <div id="story"></div>
-
+    
     <!-- Scripts -->
     <!-- Order is important: utils first, then config, then the main app logic -->
     <script src="./js/utils.js"></script>
     <script src="./js/config.js"></script>
     <script src="./js/app.js"></script>
-
     <script>
         // Initialize the application
-        // The helper functions and map logic are now handled entirely within app.js
         initializeApp();
     </script>
 </body>
-
 </html>
