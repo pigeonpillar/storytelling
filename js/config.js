@@ -19,12 +19,12 @@ var config = {
     
     title: 'Under Fire',
     subtitle: 'Paramedics in the West Bank Face Systematic Attacks',
-    byline: 'An Interactive Platform by Physicians for Human Rights - Israel',
+    byline: 'An Interactive Platform by Physicians for Human Rights',
     
     footer: `
         <div class="credits">
             <div>
-                <strong>Documentation:</strong> Physicians for Human Rights - Israel
+                <strong>Documentation:</strong> Physicians for Human Rights
             </div>
             <div>
                 <strong>PHR 2025</strong>
